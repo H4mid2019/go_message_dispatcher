@@ -1,3 +1,4 @@
+// Package scheduler provides background task scheduling and message processing automation.
 package scheduler
 
 import (
