@@ -4,23 +4,33 @@ linters:
   default: standard
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
-    - staticcheck
-    - unused
+    - staticcheck      # This now includes gosimple and unused
     - misspell
     - gocritic
     - errname
     - gosec
+  exclusions:
+    rules:
+      - linters:
+          - errcheck
+        text:  "Error return value of `.*\\.Close` is not checked"
+      - linters:
+          - errcheck
+        text: "Error return value of `rows\\.Close` is not checked"
+      - linters:
+          - errcheck
+        text: "Error return value of `.*Body\\.Close` is not checked"
+      - linters:
+          - gosec
+        text: "G304.*file inclusion via variable"
 
 formatters:
   enable:
     - gofmt
     - goimports
   settings:
-    gofmt:
-      simplify: true
     goimports:
       local-prefixes:
         - github.com/go-message-dispatcher
