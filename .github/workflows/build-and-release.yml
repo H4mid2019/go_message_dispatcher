@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  GO_VERSION: '1.23'
+  GO_VERSION: '1.25'
 
 jobs:
   test:
@@ -84,7 +84,17 @@ jobs:
         DB_PASSWORD: password
         REDIS_HOST: localhost
         REDIS_PORT: 6379
-      run: go test -race -coverprofile=coverage.out ./...
+        CGO_ENABLED: 1
+      run: |
+        # Find packages with test files and run tests
+        PACKAGES_WITH_TESTS=$(go list -f '{{if .TestGoFiles}}{{.ImportPath}}{{end}}' ./... | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+        if [ -n "$PACKAGES_WITH_TESTS" ]; then
+          echo "Running tests for packages: $PACKAGES_WITH_TESTS"
+          echo "$PACKAGES_WITH_TESTS" | xargs go test -race -coverprofile=coverage.out -covermode=atomic
+        else
+          echo "No test files found, creating empty coverage file"
+          echo "mode: atomic" > coverage.out
+        fi
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
