@@ -1,40 +1,33 @@
 version: "2"
 
-run:
-  timeout: 5m
-  tests: true
-
 linters:
+  default: standard
   enable:
     - errcheck
     - gosimple
     - govet
     - ineffassign
     - staticcheck
-    - typecheck
     - unused
-    - gofmt
-    - goimports
     - misspell
     - gocritic
+    - errname
     - gosec
-  disable:
-    - deadcode
-    - varcheck
 
-linters-settings:
-  govet:
-    enable:
-      - shadow
-  misspell:
-    locale: US
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-    disabled-checks:
-      - unnamedResult
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/go-message-dispatcher
+
+run:
+  timeout: 5m
+  tests: true
 
 issues:
   max-issues-per-linter: 0
