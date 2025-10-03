@@ -3,15 +3,13 @@
   "go.useLanguageServer": true,
   "go.formatTool": "goimports",
   "go.lintTool": "golangci-lint",
-  "go.lintOnSave": "package",
-  "go.vetOnSave": "package",
-  "go.buildOnSave": "package",
+  "go.lintOnSave": "off",
+  "go.vetOnSave": "off",
+  "go.buildOnSave": "off",
   "go.testOnSave": false,
-  "editor.formatOnSave": true,
-  "editor.formatOnPaste": true,
-  "editor.codeActionsOnSave": {
-    "source.organizeImports": "explicit"
-  },
+  "editor.formatOnSave": false,
+  "editor.formatOnPaste": false,
+  "editor.codeActionsOnSave": {},
   "go.toolsManagement.autoUpdate": true,
   "go.alternateTools": {
     "go-langserver": "gopls"
@@ -29,12 +27,18 @@
   "[go]": {
     "editor.defaultFormatter": "golang.go",
     "editor.tabSize": 4,
-    "editor.insertSpaces": false
+    "editor.insertSpaces": false,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
   },
   "[go.mod]": {
-    "editor.defaultFormatter": "golang.go"
+    "editor.defaultFormatter": "golang.go",
+    "editor.formatOnSave": true
   },
   "[go.sum]": {
-    "editor.defaultFormatter": "golang.go"
+    "editor.defaultFormatter": "golang.go",
+    "editor.formatOnSave": true
   }
 }
