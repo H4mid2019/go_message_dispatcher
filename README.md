@@ -101,7 +101,7 @@ Choose the deployment method that best fits your needs:
 1. **Download the latest release** from [GitHub Releases](../../releases)
 
    - `message-dispatcher-server-windows-amd64.exe` (Windows)
-   - `message-dispatcher-server-linux-amd64` (Linux)  
+   - `message-dispatcher-server-linux-amd64` (Linux)
    - `message-dispatcher-server-darwin-amd64` (macOS Intel)
    - `message-dispatcher-server-darwin-arm64` (macOS Apple Silicon)
 
@@ -219,7 +219,7 @@ curl -X POST http://localhost:8080/api/messaging/start
 # List sent messages
 curl http://localhost:8080/api/messages/sent
 
-# Stop processing  
+# Stop processing
 curl -X POST http://localhost:8080/api/messaging/stop
 ```
 
@@ -297,20 +297,20 @@ CREATE INDEX idx_messages_phone ON messages(phone_number);
 
 Set these environment variables:
 
-| Variable         | Description                       | Default                    |
-| ---------------- | --------------------------------- | -------------------------- |
-| `DB_HOST`        | PostgreSQL host                   | localhost                  |
-| `DB_PORT`        | PostgreSQL port                   | 5432                       |
-| `DB_NAME`        | Database name                     | messages_db                |
-| `DB_USER`        | Database user                     | postgres                   |
-| `DB_PASSWORD`    | Database password                 | password                   |
-| `REDIS_HOST`     | Redis host                        | localhost                  |
-| `REDIS_PORT`     | Redis port                        | 6379                       |
-| `REDIS_PASSWORD` | Redis password                    | ""                         |
-| `SERVER_PORT`    | HTTP server port                  | 8080                       |
-| `LOG_LEVEL`      | Log level (debug/info/warn/error) | info                       |
+| Variable         | Description                       | Default                      |
+| ---------------- | --------------------------------- | ---------------------------- |
+| `DB_HOST`        | PostgreSQL host                   | localhost                    |
+| `DB_PORT`        | PostgreSQL port                   | 5432                         |
+| `DB_NAME`        | Database name                     | messages_db                  |
+| `DB_USER`        | Database user                     | postgres                     |
+| `DB_PASSWORD`    | Database password                 | password                     |
+| `REDIS_HOST`     | Redis host                        | localhost                    |
+| `REDIS_PORT`     | Redis port                        | 6379                         |
+| `REDIS_PASSWORD` | Redis password                    | ""                           |
+| `SERVER_PORT`    | HTTP server port                  | 8080                         |
+| `LOG_LEVEL`      | Log level (debug/info/warn/error) | info                         |
 | `SMS_API_URL`    | SMS provider API URL              | `http://localhost:3001/send` |
-| `SMS_API_TOKEN`  | SMS provider auth token           | mock-token                 |
+| `SMS_API_TOKEN`  | SMS provider auth token           | mock-token                   |
 
 ## Testing
 
@@ -342,6 +342,7 @@ go test -tags=integration ./...
 ## Development Setup
 
 ### Required Tools
+
 ```powershell
 # Install Go formatting and linting tools
 go install golang.org/x/tools/cmd/goimports@latest
@@ -349,23 +350,28 @@ go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 ```
 
 ### VS Code Configuration
+
 The project includes VS Code settings that will:
-- ✅ **Format on save** with `goimports` 
+
+- ✅ **Format on save** with `goimports`
 - ✅ **Lint on save** with `golangci-lint`
 - ✅ **Organize imports** automatically
 - ✅ **Run vet checks** on save
 - ✅ **Build checks** on save
 
 ### Pre-commit Hooks
+
 Git hooks automatically run before each commit:
+
 - 🔧 Code formatting
-- 🔍 Linting checks  
+- 🔍 Linting checks
 - 🧪 All tests
 - 🏗️ Build verification
 
 ## Code Quality
 
 ### Manual Commands
+
 ```powershell
 # Format code
 goimports -w .
@@ -382,6 +388,32 @@ golangci-lint run --fix
 # - go: test
 # - go: lint
 # - go: format
+```
+
+### Quick Quality Checks
+
+**Check everything at once:**
+
+```bash
+# Bash/Linux/macOS
+gofmt -s -l . && goimports -l . && go vet ./... && golangci-lint run
+```
+
+```powershell
+# PowerShell/Windows
+gofmt -s -l .; if ($LASTEXITCODE -eq 0) { goimports -l . }; if ($LASTEXITCODE -eq 0) { go vet ./... }; if ($LASTEXITCODE -eq 0) { golangci-lint run }
+```
+
+**Fix formatting issues:**
+
+```bash
+# Bash/Linux/macOS
+gofmt -s -w . && goimports -w .
+```
+
+```powershell
+# PowerShell/Windows
+gofmt -s -w .; goimports -w .
 ```
 
 ## Development Notes
@@ -432,7 +464,7 @@ make build-all
 make build-windows
 
 # Build for Linux
-make build-linux  
+make build-linux
 
 # Build for macOS (Intel and Apple Silicon)
 make build-darwin
