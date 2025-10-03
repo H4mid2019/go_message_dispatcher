@@ -3,7 +3,6 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -36,7 +35,7 @@ func (s *MessageScheduler) Start() error {
 	defer s.runningMux.Unlock()
 
 	if s.running {
-		return fmt.Errorf("scheduler is already running")
+		return nil
 	}
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
@@ -54,7 +53,7 @@ func (s *MessageScheduler) Stop() error {
 	defer s.runningMux.Unlock()
 
 	if !s.running {
-		return fmt.Errorf("scheduler is not running")
+		return nil
 	}
 
 	s.cancel()

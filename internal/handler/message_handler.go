@@ -53,10 +53,19 @@ type ErrorResponse struct {
 }
 
 func (h *MessageHandler) StartProcessing(c *gin.Context) {
+	isRunning := h.processingController.IsRunning()
+	if isRunning {
+		c.JSON(http.StatusOK, ControlResponse{
+			Status:  "running",
+			Message: "Message processing is already running",
+		})
+		return
+	}
+
 	err := h.processingController.Start()
 	if err != nil {
 		h.logger.Error("Failed to start message processing", zap.Error(err))
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:   "start_failed",
 			Message: err.Error(),
 		})
@@ -70,10 +79,19 @@ func (h *MessageHandler) StartProcessing(c *gin.Context) {
 }
 
 func (h *MessageHandler) StopProcessing(c *gin.Context) {
+	isRunning := h.processingController.IsRunning()
+	if !isRunning {
+		c.JSON(http.StatusOK, ControlResponse{
+			Status:  "stopped",
+			Message: "Message processing is not running",
+		})
+		return
+	}
+
 	err := h.processingController.Stop()
 	if err != nil {
 		h.logger.Error("Failed to stop message processing", zap.Error(err))
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:   "stop_failed",
 			Message: err.Error(),
 		})
