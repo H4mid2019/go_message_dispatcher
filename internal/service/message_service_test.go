@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockMessageRepository is a mock implementation for testing
 type MockMessageRepository struct {
 	mock.Mock
 }
@@ -35,7 +34,6 @@ func (m *MockMessageRepository) CreateMessage(ctx context.Context, phoneNumber, 
 	return args.Get(0).(*domain.Message), args.Error(1)
 }
 
-// MockCacheRepository is a mock implementation for testing
 type MockCacheRepository struct {
 	mock.Mock
 }
@@ -58,7 +56,6 @@ func (m *MockCacheRepository) GetMultipleDeliveryCache(ctx context.Context, mess
 	return args.Get(0).(map[int]*domain.CachedDelivery), args.Error(1)
 }
 
-// MockSMSProvider is a mock implementation for testing
 type MockSMSProvider struct {
 	mock.Mock
 }
@@ -72,12 +69,10 @@ func (m *MockSMSProvider) SendMessage(ctx context.Context, phoneNumber, content 
 }
 
 func TestMessageService_ProcessMessages_Success(t *testing.T) {
-	// Setup mocks
 	mockMessageRepo := new(MockMessageRepository)
 	mockCacheRepo := new(MockCacheRepository)
 	mockSMSProvider := new(MockSMSProvider)
 
-	// Create test messages
 	testMessages := []*domain.Message{
 		{
 			ID:          1,
@@ -95,30 +90,18 @@ func TestMessageService_ProcessMessages_Success(t *testing.T) {
 		},
 	}
 
-	// Setup mock expectations
 	mockMessageRepo.On("GetUnsentMessages", mock.Anything, 2).Return(testMessages, nil)
-
-	// SMS provider expectations
 	mockSMSProvider.On("SendMessage", mock.Anything, "+1234567890", "Test message 1").
 		Return(&domain.SMSDeliveryResponse{Message: "Accepted", MessageID: "msg_123"}, nil)
 	mockSMSProvider.On("SendMessage", mock.Anything, "+1234567891", "Test message 2").
 		Return(&domain.SMSDeliveryResponse{Message: "Accepted", MessageID: "msg_456"}, nil)
-
-	// Repository update expectations
 	mockMessageRepo.On("MarkAsSent", mock.Anything, 1).Return(nil)
 	mockMessageRepo.On("MarkAsSent", mock.Anything, 2).Return(nil)
-
-	// Cache expectations
 	mockCacheRepo.On("SetDeliveryCache", mock.Anything, 1, mock.AnythingOfType("*domain.CachedDelivery")).Return(nil)
 	mockCacheRepo.On("SetDeliveryCache", mock.Anything, 2, mock.AnythingOfType("*domain.CachedDelivery")).Return(nil)
 
-	// Create service
 	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
-
-	// Execute test
 	err := service.ProcessMessages(context.Background())
-
-	// Assertions
 	assert.NoError(t, err)
 	mockMessageRepo.AssertExpectations(t)
 	mockSMSProvider.AssertExpectations(t)
@@ -126,35 +109,26 @@ func TestMessageService_ProcessMessages_Success(t *testing.T) {
 }
 
 func TestMessageService_ProcessMessages_NoMessages(t *testing.T) {
-	// Setup mocks
 	mockMessageRepo := new(MockMessageRepository)
 	mockCacheRepo := new(MockCacheRepository)
 	mockSMSProvider := new(MockSMSProvider)
 
-	// Setup expectation for no messages
 	mockMessageRepo.On("GetUnsentMessages", mock.Anything, 2).Return([]*domain.Message{}, nil)
 
-	// Create service
 	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
-
-	// Execute test
 	err := service.ProcessMessages(context.Background())
 
-	// Assertions
 	assert.NoError(t, err)
 	mockMessageRepo.AssertExpectations(t)
-	// SMS provider and cache should not be called
 	mockSMSProvider.AssertNotCalled(t, "SendMessage")
 	mockCacheRepo.AssertNotCalled(t, "SetDeliveryCache")
 }
 
 func TestMessageService_GetSentMessagesWithCache_Success(t *testing.T) {
-	// Setup mocks
 	mockMessageRepo := new(MockMessageRepository)
 	mockCacheRepo := new(MockCacheRepository)
 	mockSMSProvider := new(MockSMSProvider)
 
-	// Create test data
 	sentMessages := []*domain.Message{
 		{
 			ID:          1,
@@ -172,17 +146,11 @@ func TestMessageService_GetSentMessagesWithCache_Success(t *testing.T) {
 		},
 	}
 
-	// Setup expectations
 	mockMessageRepo.On("GetSentMessages", mock.Anything).Return(sentMessages, nil)
 	mockCacheRepo.On("GetMultipleDeliveryCache", mock.Anything, []int{1}).Return(cachedData, nil)
 
-	// Create service
 	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
-
-	// Execute test
 	result, err := service.GetSentMessagesWithCache(context.Background())
-
-	// Assertions
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
 	assert.Equal(t, 1, result[0].ID)

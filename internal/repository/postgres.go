@@ -1,5 +1,3 @@
-// Package repository provides data access implementations for PostgreSQL and Redis.
-// It implements the domain interfaces for persistent data storage and caching.
 package repository
 
 import (
@@ -8,21 +6,17 @@ import (
 	"fmt"
 
 	"github.com/go-message-dispatcher/internal/domain"
-	_ "github.com/lib/pq" // PostgreSQL driver
+	_ "github.com/lib/pq"
 )
 
-// PostgreSQLMessageRepository implements MessageRepository using PostgreSQL
 type PostgreSQLMessageRepository struct {
 	db *sql.DB
 }
 
-// NewPostgreSQLMessageRepository creates a new PostgreSQL message repository
 func NewPostgreSQLMessageRepository(db *sql.DB) *PostgreSQLMessageRepository {
 	return &PostgreSQLMessageRepository{db: db}
 }
 
-// GetUnsentMessages retrieves unsent messages in FIFO order (oldest first)
-// This ensures fairest processing and prevents message starvation
 func (r *PostgreSQLMessageRepository) GetUnsentMessages(ctx context.Context, limit int) ([]*domain.Message, error) {
 	query := `
 		SELECT id, phone_number, content, sent, created_at 
@@ -60,8 +54,6 @@ func (r *PostgreSQLMessageRepository) GetUnsentMessages(ctx context.Context, lim
 	return messages, nil
 }
 
-// MarkAsSent updates a message's sent status to true
-// Uses optimistic locking to prevent race conditions in concurrent processing
 func (r *PostgreSQLMessageRepository) MarkAsSent(ctx context.Context, messageID int) error {
 	query := `UPDATE messages SET sent = TRUE WHERE id = $1 AND sent = FALSE`
 
@@ -82,8 +74,6 @@ func (r *PostgreSQLMessageRepository) MarkAsSent(ctx context.Context, messageID 
 	return nil
 }
 
-// GetSentMessages retrieves all messages that have been successfully sent
-// Ordered by creation time for consistent API responses
 func (r *PostgreSQLMessageRepository) GetSentMessages(ctx context.Context) ([]*domain.Message, error) {
 	query := `
 		SELECT id, phone_number, content, sent, created_at 
@@ -120,8 +110,6 @@ func (r *PostgreSQLMessageRepository) GetSentMessages(ctx context.Context) ([]*d
 	return messages, nil
 }
 
-// CreateMessage adds a new message to the database queue
-// Primarily used for testing and administrative purposes
 func (r *PostgreSQLMessageRepository) CreateMessage(ctx context.Context, phoneNumber, content string) (*domain.Message, error) {
 	query := `
 		INSERT INTO messages (phone_number, content) 
@@ -143,7 +131,6 @@ func (r *PostgreSQLMessageRepository) CreateMessage(ctx context.Context, phoneNu
 	return message, nil
 }
 
-// CheckConnection verifies the database connection is healthy
 func (r *PostgreSQLMessageRepository) CheckConnection(ctx context.Context) error {
 	return r.db.PingContext(ctx)
 }

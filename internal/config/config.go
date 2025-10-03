@@ -1,5 +1,3 @@
-// Package config provides centralized configuration management for the message dispatcher service.
-// It loads configuration from environment variables with sensible defaults and validation.
 package config
 
 import (
@@ -9,7 +7,6 @@ import (
 	"time"
 )
 
-// Config holds all configuration values for the application
 type Config struct {
 	Database DatabaseConfig
 	Redis    RedisConfig
@@ -18,7 +15,6 @@ type Config struct {
 	App      AppConfig
 }
 
-// DatabaseConfig contains PostgreSQL connection parameters
 type DatabaseConfig struct {
 	Host     string
 	Port     int
@@ -28,7 +24,6 @@ type DatabaseConfig struct {
 	SSLMode  string
 }
 
-// RedisConfig contains Redis connection parameters
 type RedisConfig struct {
 	Host     string
 	Port     int
@@ -36,27 +31,22 @@ type RedisConfig struct {
 	DB       int
 }
 
-// ServerConfig contains HTTP server configuration
 type ServerConfig struct {
 	Port     int
 	LogLevel string
 }
 
-// SMSConfig contains SMS provider API configuration
 type SMSConfig struct {
 	APIURL string
 	Token  string
 }
 
-// AppConfig contains application-specific settings
 type AppConfig struct {
 	BatchSize          int
 	ProcessingInterval time.Duration
 	ShutdownTimeout    time.Duration
 }
 
-// Load reads configuration from environment variables and returns a Config struct.
-// It provides sensible defaults for development and validates required values.
 func Load() (*Config, error) {
 	config := &Config{
 		Database: DatabaseConfig{
@@ -88,7 +78,6 @@ func Load() (*Config, error) {
 		},
 	}
 
-	// Validate critical configuration
 	if err := config.validate(); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
@@ -96,7 +85,6 @@ func Load() (*Config, error) {
 	return config, nil
 }
 
-// validate ensures all required configuration values are present and valid
 func (c *Config) validate() error {
 	if c.Database.Name == "" {
 		return fmt.Errorf("database name is required")
@@ -116,19 +104,16 @@ func (c *Config) validate() error {
 	return nil
 }
 
-// DatabaseDSN returns the PostgreSQL connection string
 func (c *Config) DatabaseDSN() string {
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		c.Database.Host, c.Database.Port, c.Database.User,
 		c.Database.Password, c.Database.Name, c.Database.SSLMode)
 }
 
-// RedisAddr returns the Redis connection address
 func (c *Config) RedisAddr() string {
 	return fmt.Sprintf("%s:%d", c.Redis.Host, c.Redis.Port)
 }
 
-// getEnv retrieves an environment variable or returns the default value
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -136,7 +121,6 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// getEnvInt retrieves an environment variable as integer or returns the default value
 func getEnvInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if intVal, err := strconv.Atoi(value); err == nil {
@@ -146,7 +130,6 @@ func getEnvInt(key string, defaultValue int) int {
 	return defaultValue
 }
 
-// getEnvDuration retrieves an environment variable as duration or returns the default value
 func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 	if value := os.Getenv(key); value != "" {
 		if duration, err := time.ParseDuration(value); err == nil {
