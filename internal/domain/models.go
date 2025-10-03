@@ -30,13 +30,6 @@ type CachedDelivery struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-type ProcessingStatus string
-
-const (
-	StatusStopped ProcessingStatus = "stopped"
-	StatusRunning ProcessingStatus = "running"
-)
-
 type MessageRepository interface {
 	GetUnsentMessages(ctx context.Context, limit int) ([]*Message, error)
 	MarkAsSent(ctx context.Context, messageID int) error

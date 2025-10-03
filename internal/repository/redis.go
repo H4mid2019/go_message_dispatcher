@@ -4,6 +4,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -47,7 +48,7 @@ func (r *RedisCacheRepository) GetDeliveryCache(ctx context.Context, messageID i
 
 	data, err := r.client.Get(ctx, key).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get cached delivery data: %w", err)
@@ -77,7 +78,7 @@ func (r *RedisCacheRepository) GetMultipleDeliveryCache(ctx context.Context, mes
 	}
 
 	_, err := pipe.Exec(ctx)
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return nil, fmt.Errorf("failed to execute cache pipeline: %w", err)
 	}
 
@@ -86,7 +87,7 @@ func (r *RedisCacheRepository) GetMultipleDeliveryCache(ctx context.Context, mes
 	for messageID, cmd := range commands {
 		data, err := cmd.Result()
 		if err != nil {
-			if err == redis.Nil {
+			if errors.Is(err, redis.Nil) {
 				continue // Skip cache misses
 			}
 			return nil, fmt.Errorf("failed to get cached data for message %d: %w", messageID, err)

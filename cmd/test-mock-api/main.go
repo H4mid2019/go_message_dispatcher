@@ -15,11 +15,6 @@ type SMSRequest struct {
 	Content     string `json:"content"`
 }
 
-type SMSResponse struct {
-	Message   string `json:"message"`
-	MessageID string `json:"messageId"`
-}
-
 func main() {
 	smsReq := SMSRequest{
 		PhoneNumber: "+1234567890",

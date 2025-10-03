@@ -41,7 +41,7 @@ func main() {
 	}
 	defer func() {
 		if deferErr := db.Close(); deferErr != nil {
-			log.Printf("Failed to close database: %v", err)
+			log.Printf("Failed to close database: %v", deferErr)
 		}
 	}()
 
