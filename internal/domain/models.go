@@ -1,3 +1,4 @@
+// Package domain defines core business entities, interfaces, and domain logic.
 package domain
 
 import (

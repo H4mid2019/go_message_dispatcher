@@ -1,3 +1,4 @@
+// Package repository provides data access implementations.
 package repository
 
 import (
@@ -7,8 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-message-dispatcher/internal/domain"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/go-message-dispatcher/internal/domain"
 )
 
 type RedisCacheRepository struct {
@@ -17,9 +19,10 @@ type RedisCacheRepository struct {
 }
 
 func NewRedisCacheRepository(client *redis.Client) *RedisCacheRepository {
+	const defaultTTL = 24 * time.Hour
 	return &RedisCacheRepository{
 		client: client,
-		ttl:    24 * time.Hour,
+		ttl:    defaultTTL,
 	}
 }
 

@@ -1,3 +1,4 @@
+// Package config provides centralized configuration management with environment variable support.
 package config
 
 import (
@@ -48,10 +49,17 @@ type AppConfig struct {
 }
 
 func Load() (*Config, error) {
+	const (
+		defaultDBPort     = 5432
+		defaultRedisPort  = 6379
+		defaultServerPort = 8080
+		defaultBatchSize  = 2
+	)
+
 	config := &Config{
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnvInt("DB_PORT", 5432),
+			Port:     getEnvInt("DB_PORT", defaultDBPort),
 			Name:     getEnv("DB_NAME", "messages_db"),
 			User:     getEnv("DB_USER", "postgres"),
 			Password: getEnv("DB_PASSWORD", "password"),
@@ -59,12 +67,12 @@ func Load() (*Config, error) {
 		},
 		Redis: RedisConfig{
 			Host:     getEnv("REDIS_HOST", "localhost"),
-			Port:     getEnvInt("REDIS_PORT", 6379),
+			Port:     getEnvInt("REDIS_PORT", defaultRedisPort),
 			Password: getEnv("REDIS_PASSWORD", ""),
 			DB:       getEnvInt("REDIS_DB", 0),
 		},
 		Server: ServerConfig{
-			Port:     getEnvInt("SERVER_PORT", 8080),
+			Port:     getEnvInt("SERVER_PORT", defaultServerPort),
 			LogLevel: getEnv("LOG_LEVEL", "info"),
 		},
 		SMS: SMSConfig{
@@ -72,9 +80,9 @@ func Load() (*Config, error) {
 			Token:  getEnv("SMS_API_TOKEN", "mock-token"),
 		},
 		App: AppConfig{
-			BatchSize:          getEnvInt("BATCH_SIZE", 2),
-			ProcessingInterval: getEnvDuration("PROCESSING_INTERVAL", 2*time.Minute),
-			ShutdownTimeout:    getEnvDuration("SHUTDOWN_TIMEOUT", 30*time.Second),
+			BatchSize:          getEnvInt("BATCH_SIZE", defaultBatchSize),
+			ProcessingInterval: getEnvDuration("PROCESSING_INTERVAL", 2*time.Minute), //nolint:mnd
+			ShutdownTimeout:    getEnvDuration("SHUTDOWN_TIMEOUT", 30*time.Second),   //nolint:mnd
 		},
 	}
 

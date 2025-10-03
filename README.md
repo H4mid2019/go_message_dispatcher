@@ -166,7 +166,7 @@ For development and customization
 
 **Prerequisites:**
 
-- Go 1.21+
+- Go 1.25+
 - PostgreSQL 15+ (running)
 - Redis 7+ (running)
 
@@ -338,6 +338,51 @@ go test -tags=integration ./...
 - Health endpoint: `GET /health`
 - Metrics endpoint: `GET /metrics`
 - Service logs via structured JSON logging
+
+## Development Setup
+
+### Required Tools
+```powershell
+# Install Go formatting and linting tools
+go install golang.org/x/tools/cmd/goimports@latest
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+```
+
+### VS Code Configuration
+The project includes VS Code settings that will:
+- ✅ **Format on save** with `goimports` 
+- ✅ **Lint on save** with `golangci-lint`
+- ✅ **Organize imports** automatically
+- ✅ **Run vet checks** on save
+- ✅ **Build checks** on save
+
+### Pre-commit Hooks
+Git hooks automatically run before each commit:
+- 🔧 Code formatting
+- 🔍 Linting checks  
+- 🧪 All tests
+- 🏗️ Build verification
+
+## Code Quality
+
+### Manual Commands
+```powershell
+# Format code
+goimports -w .
+
+# Run linter
+golangci-lint run
+
+# Run linter with auto-fix
+golangci-lint run --fix
+
+# Run specific VS Code tasks
+# Ctrl+Shift+P -> "Tasks: Run Task"
+# - go: build
+# - go: test
+# - go: lint
+# - go: format
+```
 
 ## Development Notes
 

@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Server",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/server/main.go",
+      "env": {
+        "DB_HOST": "localhost",
+        "DB_PORT": "5432",
+        "DB_USER": "postgres",
+        "DB_PASSWORD": "password",
+        "DB_NAME": "message_dispatcher",
+        "REDIS_ADDR": "localhost:6379",
+        "SMS_API_URL": "http://localhost:8080/sms",
+        "SMS_API_TOKEN": "test-token"
+      },
+      "args": [],
+      "showLog": true,
+      "preLaunchTask": "go: build"
+    },
+    {
+      "name": "Launch Mock API",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/mock-api/main.go",
+      "env": {},
+      "args": [],
+      "showLog": true
+    }
+  ]
+}

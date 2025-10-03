@@ -12,15 +12,16 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
 	"github.com/go-message-dispatcher/internal/config"
 	"github.com/go-message-dispatcher/internal/domain"
 	"github.com/go-message-dispatcher/internal/handler"
 	"github.com/go-message-dispatcher/internal/repository"
 	"github.com/go-message-dispatcher/internal/scheduler"
 	"github.com/go-message-dispatcher/internal/service"
-	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	_ "github.com/lib/pq"
 )
@@ -118,10 +119,13 @@ func NewApplication() (*Application, error) {
 
 	return app, nil
 }
+
+const debugLevel = "debug"
+
 func initLogger(logLevel string) (*zap.Logger, error) {
 	var level zapcore.Level
 	switch logLevel {
-	case "debug":
+	case debugLevel:
 		level = zapcore.DebugLevel
 	case "info":
 		level = zapcore.InfoLevel
@@ -133,12 +137,15 @@ func initLogger(logLevel string) (*zap.Logger, error) {
 		level = zapcore.InfoLevel
 	}
 
+	const samplingInitial = 100
+	const samplingTherafter = 100
+
 	config := zap.Config{
 		Level:       zap.NewAtomicLevelAt(level),
 		Development: false,
 		Sampling: &zap.SamplingConfig{
-			Initial:    100,
-			Thereafter: 100,
+			Initial:    samplingInitial,
+			Thereafter: samplingTherafter,
 		},
 		Encoding:         "json",
 		EncoderConfig:    zap.NewProductionEncoderConfig(),
@@ -150,21 +157,26 @@ func initLogger(logLevel string) (*zap.Logger, error) {
 }
 
 func initDatabase(cfg *config.Config) (*sql.DB, error) {
+	const maxOpenConns = 25
+	const maxIdleConns = 25
+	const connMaxLifetime = 5 * time.Minute
+	const dbTimeout = 5 * time.Second
+
 	db, err := sql.Open("postgres", cfg.DatabaseDSN())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(25)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetMaxOpenConns(maxOpenConns)
+	db.SetMaxIdleConns(maxIdleConns)
+	db.SetConnMaxLifetime(connMaxLifetime)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 
 	err = db.PingContext(ctx)
 	if err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
@@ -172,13 +184,15 @@ func initDatabase(cfg *config.Config) (*sql.DB, error) {
 }
 
 func initRedis(cfg *config.Config) (*redis.Client, error) {
+	const redisTimeout = 5 * time.Second
+
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.RedisAddr(),
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
 	defer cancel()
 
 	_, err := client.Ping(ctx).Result()
@@ -190,7 +204,7 @@ func initRedis(cfg *config.Config) (*redis.Client, error) {
 }
 
 func setupHTTPServer(cfg *config.Config, messageHandler *handler.MessageHandler, logger *zap.Logger) *http.Server {
-	if cfg.Server.LogLevel == "debug" {
+	if cfg.Server.LogLevel == debugLevel {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
@@ -204,22 +218,19 @@ func setupHTTPServer(cfg *config.Config, messageHandler *handler.MessageHandler,
 	router.GET("/version", messageHandler.Version)
 
 	api := router.Group("/api")
-	{
-		messaging := api.Group("/messaging")
-		{
-			messaging.POST("/start", messageHandler.StartProcessing)
-			messaging.POST("/stop", messageHandler.StopProcessing)
-		}
+	messaging := api.Group("/messaging")
+	messaging.POST("/start", messageHandler.StartProcessing)
+	messaging.POST("/stop", messageHandler.StopProcessing)
 
-		messages := api.Group("/messages")
-		{
-			messages.GET("/sent", messageHandler.GetSentMessages)
-		}
-	}
+	messages := api.Group("/messages")
+	messages.GET("/sent", messageHandler.GetSentMessages)
+
+	const readHeaderTimeout = 10 * time.Second
 
 	return &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler: router,
+		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler:           router,
+		ReadHeaderTimeout: readHeaderTimeout,
 	}
 }
 
@@ -250,7 +261,7 @@ func ginLogger(logger *zap.Logger) gin.HandlerFunc {
 	}
 }
 
-func (app *Application) waitForShutdown(ctx context.Context) {
+func (app *Application) waitForShutdown(_ context.Context) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 

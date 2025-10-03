@@ -1,3 +1,4 @@
+// Package scheduler provides background task scheduling and message processing automation.
 package scheduler
 
 import (
@@ -6,8 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-message-dispatcher/internal/domain"
 	"go.uber.org/zap"
+
+	"github.com/go-message-dispatcher/internal/domain"
 )
 
 type MessageScheduler struct {
@@ -89,7 +91,8 @@ func (s *MessageScheduler) processMessages() {
 }
 
 func (s *MessageScheduler) processBatch() {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	const processingTimeout = 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), processingTimeout)
 	defer cancel()
 
 	start := time.Now()

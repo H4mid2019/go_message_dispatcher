@@ -1,9 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -33,9 +33,19 @@ type HealthResponse struct {
 
 func generateMessageID() string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, 9)
+	const idLength = 9
+	b := make([]byte, idLength)
+
+	randomBytes := make([]byte, idLength)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		// Fallback to timestamp-based ID if crypto/rand fails
+		const fallbackMod = 1000000000
+		return fmt.Sprintf("msg_%d", time.Now().UnixNano()%fallbackMod)
+	}
+
 	for i := range b {
-		b[i] = charset[rand.Intn(len(charset))]
+		b[i] = charset[randomBytes[i]%byte(len(charset))]
 	}
 	return "msg_" + string(b)
 }
@@ -65,7 +75,8 @@ func sendSMSHandler(c *gin.Context) {
 		return
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	const responseDelay = 100 * time.Millisecond
+	time.Sleep(responseDelay)
 	messageID := generateMessageID()
 
 	c.JSON(http.StatusOK, SMSResponse{
@@ -83,7 +94,6 @@ func healthHandler(c *gin.Context) {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
 	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.New()

@@ -1,11 +1,13 @@
+// Package handler provides HTTP request handlers for the REST API endpoints.
 package handler
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-message-dispatcher/internal/domain"
 	"go.uber.org/zap"
+
+	"github.com/go-message-dispatcher/internal/domain"
 )
 
 type MessageHandler struct {
@@ -21,7 +23,12 @@ type VersionInfo struct {
 	GitCommit string `json:"git_commit"`
 }
 
-func NewMessageHandler(messageService domain.MessageService, processingController domain.ProcessingController, logger *zap.Logger, versionInfo VersionInfo) *MessageHandler {
+func NewMessageHandler(
+	messageService domain.MessageService,
+	processingController domain.ProcessingController,
+	logger *zap.Logger,
+	versionInfo VersionInfo,
+) *MessageHandler {
 	return &MessageHandler{
 		messageService:       messageService,
 		processingController: processingController,

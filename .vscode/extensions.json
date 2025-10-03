@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "golang.go",
+    "ms-vscode.vscode-json",
+    "redhat.vscode-yaml",
+    "ms-vscode.makefile-tools",
+    "GitHub.vscode-pull-request-github",
+    "eamodio.gitlens"
+  ]
+}

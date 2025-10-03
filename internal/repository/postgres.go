@@ -1,3 +1,4 @@
+// Package repository provides data access implementations for various storage backends.
 package repository
 
 import (
@@ -5,8 +6,9 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/go-message-dispatcher/internal/domain"
 	_ "github.com/lib/pq"
+
+	"github.com/go-message-dispatcher/internal/domain"
 )
 
 type PostgreSQLMessageRepository struct {
@@ -34,15 +36,15 @@ func (r *PostgreSQLMessageRepository) GetUnsentMessages(ctx context.Context, lim
 	var messages []*domain.Message
 	for rows.Next() {
 		message := &domain.Message{}
-		err := rows.Scan(
+		scanErr := rows.Scan(
 			&message.ID,
 			&message.PhoneNumber,
 			&message.Content,
 			&message.Sent,
 			&message.CreatedAt,
 		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan message row: %w", err)
+		if scanErr != nil {
+			return nil, fmt.Errorf("failed to scan message row: %w", scanErr)
 		}
 		messages = append(messages, message)
 	}
@@ -90,15 +92,15 @@ func (r *PostgreSQLMessageRepository) GetSentMessages(ctx context.Context) ([]*d
 	var messages []*domain.Message
 	for rows.Next() {
 		message := &domain.Message{}
-		err := rows.Scan(
+		scanErr := rows.Scan(
 			&message.ID,
 			&message.PhoneNumber,
 			&message.Content,
 			&message.Sent,
 			&message.CreatedAt,
 		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan message row: %w", err)
+		if scanErr != nil {
+			return nil, fmt.Errorf("failed to scan message row: %w", scanErr)
 		}
 		messages = append(messages, message)
 	}

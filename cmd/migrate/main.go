@@ -7,8 +7,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/go-message-dispatcher/internal/config"
 	_ "github.com/lib/pq"
+
+	"github.com/go-message-dispatcher/internal/config"
 )
 
 var (
@@ -42,12 +43,14 @@ func main() {
 
 	err = db.Ping()
 	if err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
+		log.Printf("Failed to ping database: %v", err)
+		return
 	}
 
 	err = runMigrations(db)
 	if err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
+		log.Printf("Failed to run migrations: %v", err)
+		return
 	}
 
 	fmt.Println("Database migrations completed successfully")

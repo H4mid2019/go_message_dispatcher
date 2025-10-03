@@ -1,3 +1,4 @@
+// Package service provides business logic implementations and external service integrations.
 package service
 
 import (
@@ -20,7 +21,7 @@ type HTTPSMSProvider struct {
 func NewHTTPSMSProvider(baseURL, token string) *HTTPSMSProvider {
 	return &HTTPSMSProvider{
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 30 * time.Second, //nolint:mnd
 		},
 		baseURL: baseURL,
 		token:   token,
@@ -76,7 +77,11 @@ type MessageService struct {
 	smsProvider domain.SMSProvider
 }
 
-func NewMessageService(messageRepo domain.MessageRepository, cacheRepo domain.CacheRepository, smsProvider domain.SMSProvider) *MessageService {
+func NewMessageService(
+	messageRepo domain.MessageRepository,
+	cacheRepo domain.CacheRepository,
+	smsProvider domain.SMSProvider,
+) *MessageService {
 	return &MessageService{
 		messageRepo: messageRepo,
 		cacheRepo:   cacheRepo,
@@ -85,7 +90,8 @@ func NewMessageService(messageRepo domain.MessageRepository, cacheRepo domain.Ca
 }
 
 func (s *MessageService) ProcessMessages(ctx context.Context) error {
-	messages, err := s.messageRepo.GetUnsentMessages(ctx, 2)
+	const batchSize = 2
+	messages, err := s.messageRepo.GetUnsentMessages(ctx, batchSize)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve unsent messages: %w", err)
 	}
