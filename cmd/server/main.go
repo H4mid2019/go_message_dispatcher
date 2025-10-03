@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -64,7 +65,7 @@ func main() {
 	defer cancel()
 
 	go func() {
-		if err := app.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := app.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			app.logger.Fatal("Failed to start HTTP server", zap.Error(err))
 		}
 	}()
@@ -140,7 +141,7 @@ func initLogger(logLevel string) (*zap.Logger, error) {
 	const samplingInitial = 100
 	const samplingTherafter = 100
 
-	config := zap.Config{
+	zapLogConfig := zap.Config{
 		Level:       zap.NewAtomicLevelAt(level),
 		Development: false,
 		Sampling: &zap.SamplingConfig{
@@ -153,7 +154,7 @@ func initLogger(logLevel string) (*zap.Logger, error) {
 		ErrorOutputPaths: []string{"stderr"},
 	}
 
-	return config.Build()
+	return zapLogConfig.Build()
 }
 
 func initDatabase(cfg *config.Config) (*sql.DB, error) {

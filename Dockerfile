@@ -1,4 +1,5 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25-alpine AS builder 
+# high security vulnerability, observe and monitor update it as soon as possible   https://hub.docker.com/layers/library/golang/1.25.1-alpine/images/sha256-546671046d6f9f786c24b83111ba1801b736ee4b01b23db33e4f3eb41d4f8883
 
 # Install build dependencies
 RUN apk add --no-cache git
