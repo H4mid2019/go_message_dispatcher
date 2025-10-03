@@ -98,6 +98,8 @@ Choose the deployment method that best fits your needs:
 
 **No setup required - just download and run!**
 
+#### Option 1.1: Standalone Binaries
+
 1. **Download the latest release** from [GitHub Releases](../../releases)
 
    - `message-dispatcher-server-windows-amd64.exe` (Windows)
@@ -132,6 +134,33 @@ Choose the deployment method that best fits your needs:
    # Start the service
    ./message-dispatcher-server
    ```
+
+#### Option 1.2: Docker Images
+
+Pre-built Docker images available on Docker Hub:
+
+```bash
+# Pull the latest image
+docker pull h4mid2019/message-dispatcher
+
+# Run with your existing PostgreSQL and Redis
+docker run -d \
+  --name message-dispatcher \
+  -p 8080:8080 \
+  -e DB_HOST=your-postgres-host \
+  -e DB_USER=your-db-user \
+  -e DB_PASSWORD=your-db-password \
+  -e REDIS_HOST=your-redis-host \
+  h4mid2019/message-dispatcher
+
+# Check logs
+docker logs message-dispatcher
+
+# Stop the container
+docker stop message-dispatcher
+```
+
+**Available at:** [https://hub.docker.com/r/h4mid2019/message-dispatcher](https://hub.docker.com/r/h4mid2019/message-dispatcher)
 
 ### Option 2: 🐳 Docker (Production Ready)
 
