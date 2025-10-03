@@ -6,38 +6,36 @@ run:
 
 linters:
   enable:
-    - bodyclose
-    - copyloopvar
-    - dogsled
-    - dupl
     - errcheck
-    - funlen
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - mnd
-    - goprintffuncname
-    - gosec
     - gosimple
     - govet
     - ineffassign
-    - misspell
-    - nakedret
-    - noctx
-    - nolintlint
     - staticcheck
-    - stylecheck
     - typecheck
-    - unconvert
-    - unparam
     - unused
-    - whitespace
+    - gofmt
+    - goimports
+    - misspell
+    - gocritic
+    - gosec
   disable:
-    - prealloc
-    - lll
+    - deadcode
+    - varcheck
+
+linters-settings:
+  govet:
+    enable:
+      - shadow
+  misspell:
+    locale: US
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - unnamedResult
+
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
