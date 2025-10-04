@@ -17,7 +17,7 @@ func TestRedisLock_AcquireAndRelease(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	logger := zap.NewNop()
 	ctx := context.Background()
@@ -51,7 +51,7 @@ func TestRedisLock_ConcurrentAcquire(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	logger := zap.NewNop()
 	ctx := context.Background()
@@ -93,7 +93,7 @@ func TestRedisLock_Extend(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	logger := zap.NewNop()
 	ctx := context.Background()
@@ -128,7 +128,7 @@ func TestRedisLock_AutoExpiration(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	logger := zap.NewNop()
 	ctx := context.Background()
@@ -167,7 +167,7 @@ func TestRedisLock_ReleaseNotHeld(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	logger := zap.NewNop()
 	ctx := context.Background()

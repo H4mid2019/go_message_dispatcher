@@ -63,7 +63,7 @@ func (p *HTTPSMSProvider) SendMessage(ctx context.Context, phoneNumber, content 
 	if err != nil {
 		return nil, fmt.Errorf("failed to send SMS request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("SMS provider returned status %d", resp.StatusCode)
