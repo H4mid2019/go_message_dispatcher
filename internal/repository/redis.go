@@ -1,4 +1,3 @@
-// Package repository provides data access implementations.
 package repository
 
 import (
@@ -82,13 +81,12 @@ func (r *RedisCacheRepository) GetMultipleDeliveryCache(ctx context.Context, mes
 		return nil, fmt.Errorf("failed to execute cache pipeline: %w", err)
 	}
 
-	// Process results
 	result := make(map[int]*domain.CachedDelivery)
 	for messageID, cmd := range commands {
 		data, err := cmd.Result()
 		if err != nil {
 			if errors.Is(err, redis.Nil) {
-				continue // Skip cache misses
+				continue
 			}
 			return nil, fmt.Errorf("failed to get cached data for message %d: %w", messageID, err)
 		}
@@ -105,12 +103,14 @@ func (r *RedisCacheRepository) GetMultipleDeliveryCache(ctx context.Context, mes
 	return result, nil
 }
 
-// buildCacheKey creates a consistent cache key for message delivery data
 func (r *RedisCacheRepository) buildCacheKey(messageID int) string {
 	return fmt.Sprintf("delivery:%s", strconv.Itoa(messageID))
 }
 
-// CheckConnection verifies the Redis connection is healthy
 func (r *RedisCacheRepository) CheckConnection(ctx context.Context) error {
+	return r.client.Ping(ctx).Err()
+}
+
+func (r *RedisCacheRepository) CheckHealth(ctx context.Context) error {
 	return r.client.Ping(ctx).Err()
 }

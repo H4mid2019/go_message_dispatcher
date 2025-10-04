@@ -162,3 +162,95 @@ func TestMessageService_GetSentMessagesWithCache_Success(t *testing.T) {
 	mockMessageRepo.AssertExpectations(t)
 	mockCacheRepo.AssertExpectations(t)
 }
+
+func TestMessageService_ProcessMessages_FirstSucceedsSecondFails(t *testing.T) {
+	mockMessageRepo := new(MockMessageRepository)
+	mockCacheRepo := new(MockCacheRepository)
+	mockSMSProvider := new(MockSMSProvider)
+
+	testMessages := []*domain.Message{
+		{ID: 1, PhoneNumber: "+1234567890", Content: "Message 1", Sent: false},
+		{ID: 2, PhoneNumber: "+1234567891", Content: "Message 2", Sent: false},
+	}
+
+	mockMessageRepo.On("GetUnsentMessages", mock.Anything, 2).Return(testMessages, nil)
+	mockSMSProvider.On("SendMessage", mock.Anything, "+1234567890", "Message 1").
+		Return(&domain.SMSDeliveryResponse{Message: "Accepted", MessageID: "msg_123"}, nil)
+	mockSMSProvider.On("SendMessage", mock.Anything, "+1234567891", "Message 2").
+		Return(nil, assert.AnError)
+	mockMessageRepo.On("MarkAsSent", mock.Anything, 1).Return(nil)
+	mockCacheRepo.On("SetDeliveryCache", mock.Anything, 1, mock.AnythingOfType("*domain.CachedDelivery")).Return(nil)
+
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	err := service.ProcessMessages(context.Background())
+
+	assert.Error(t, err)
+	mockMessageRepo.AssertCalled(t, "MarkAsSent", mock.Anything, 1)
+	mockMessageRepo.AssertNotCalled(t, "MarkAsSent", mock.Anything, 2)
+}
+
+func TestMessageService_ProcessMessages_SingleMessage(t *testing.T) {
+	mockMessageRepo := new(MockMessageRepository)
+	mockCacheRepo := new(MockCacheRepository)
+	mockSMSProvider := new(MockSMSProvider)
+
+	testMessages := []*domain.Message{
+		{ID: 1, PhoneNumber: "+905551111111", Content: "Single message", Sent: false},
+	}
+
+	mockMessageRepo.On("GetUnsentMessages", mock.Anything, 2).Return(testMessages, nil)
+	mockSMSProvider.On("SendMessage", mock.Anything, "+905551111111", "Single message").
+		Return(&domain.SMSDeliveryResponse{Message: "Accepted", MessageID: "msg_789"}, nil)
+	mockMessageRepo.On("MarkAsSent", mock.Anything, 1).Return(nil)
+	mockCacheRepo.On("SetDeliveryCache", mock.Anything, 1, mock.AnythingOfType("*domain.CachedDelivery")).Return(nil)
+
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	err := service.ProcessMessages(context.Background())
+
+	assert.NoError(t, err)
+	mockSMSProvider.AssertNumberOfCalls(t, "SendMessage", 1)
+}
+
+func TestMessageService_ProcessMessages_RedisFailureDoesNotBlockSending(t *testing.T) {
+	mockMessageRepo := new(MockMessageRepository)
+	mockCacheRepo := new(MockCacheRepository)
+	mockSMSProvider := new(MockSMSProvider)
+
+	testMessages := []*domain.Message{
+		{ID: 1, PhoneNumber: "+1234567890", Content: "Test", Sent: false},
+	}
+
+	mockMessageRepo.On("GetUnsentMessages", mock.Anything, 2).Return(testMessages, nil)
+	mockSMSProvider.On("SendMessage", mock.Anything, "+1234567890", "Test").
+		Return(&domain.SMSDeliveryResponse{Message: "Accepted", MessageID: "msg_111"}, nil)
+	mockMessageRepo.On("MarkAsSent", mock.Anything, 1).Return(nil)
+	mockCacheRepo.On("SetDeliveryCache", mock.Anything, 1, mock.AnythingOfType("*domain.CachedDelivery")).
+		Return(assert.AnError)
+
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	err := service.ProcessMessages(context.Background())
+
+	assert.NoError(t, err)
+	mockMessageRepo.AssertCalled(t, "MarkAsSent", mock.Anything, 1)
+}
+
+func TestMessageService_GetSentMessagesWithCache_RedisFailureFallsBack(t *testing.T) {
+	mockMessageRepo := new(MockMessageRepository)
+	mockCacheRepo := new(MockCacheRepository)
+	mockSMSProvider := new(MockSMSProvider)
+
+	sentMessages := []*domain.Message{
+		{ID: 1, PhoneNumber: "+1234567890", Content: "Test", Sent: true},
+	}
+
+	mockMessageRepo.On("GetSentMessages", mock.Anything).Return(sentMessages, nil)
+	mockCacheRepo.On("GetMultipleDeliveryCache", mock.Anything, []int{1}).
+		Return(map[int]*domain.CachedDelivery{}, assert.AnError)
+
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	result, err := service.GetSentMessagesWithCache(context.Background())
+
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Nil(t, result[0].MessageID)
+}

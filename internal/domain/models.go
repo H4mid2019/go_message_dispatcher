@@ -1,8 +1,8 @@
-// Package domain defines core business entities, interfaces, and domain logic.
 package domain
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -12,6 +12,29 @@ type Message struct {
 	Content     string    `json:"content" db:"content"`
 	Sent        bool      `json:"sent" db:"sent"`
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}
+
+func (m *Message) IsValid() error {
+	if m.PhoneNumber == "" {
+		return fmt.Errorf("phone number is required")
+	}
+	if len(m.PhoneNumber) < 10 || len(m.PhoneNumber) > 20 {
+		return fmt.Errorf("phone number must be between 10 and 20 characters")
+	}
+	if m.Content == "" {
+		return fmt.Errorf("message content is required")
+	}
+	return nil
+}
+
+func (m *Message) ValidatePhoneNumber() bool {
+	if m.PhoneNumber == "" {
+		return false
+	}
+	if len(m.PhoneNumber) < 10 || len(m.PhoneNumber) > 20 {
+		return false
+	}
+	return true
 }
 
 type SentMessageResponse struct {
@@ -56,4 +79,8 @@ type ProcessingController interface {
 	Start() error
 	Stop() error
 	IsRunning() bool
+}
+
+type HealthChecker interface {
+	CheckHealth(ctx context.Context) error
 }
