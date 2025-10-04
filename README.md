@@ -1,8 +1,10 @@
 # Automated Message Sending System
 
-A production-ready Golang service that automatically sends SMS messages from a PostgreSQL queue with Redis caching and REST API controls.
+A Golang service that automatically sends SMS messages from a PostgreSQL queue with Redis caching and REST API controls.
 
-## 🏗️ Architecture Overview
+_*Some of documentation has been written by LLM.*_
+
+## Architecture Overview
 
 This system implements a background message processor that:
 
@@ -12,25 +14,25 @@ This system implements a background message processor that:
 - Provides REST API for control and monitoring
 - Caches successful deliveries in Redis for performance
 
-## 📁 Project Structure
+## Project Structure
 
-```
+```text
 go_message_dispatcher/
 ├── cmd/                    # Application entry points
-│   ├── migrate/           # Database migration tool
-│   └── server/            # Main HTTP server
-├── internal/              # Private application code
-│   ├── config/           # Configuration management
-│   ├── domain/           # Business entities and interfaces
-│   ├── handler/          # HTTP request handlers
-│   ├── repository/       # Data access implementations
-│   ├── scheduler/        # Background processing
-│   └── service/          # Business logic services
-├── migrations/           # Database schema migrations
-├── docker-compose.yml   # Local development environment
-├── Dockerfile          # Production container build
-├── Makefile           # Development workflow commands
-└── README.md          # Project documentation
+│   ├── migrate/            # Database migration tool
+│   └── server/             # Main HTTP server
+├── internal/               # Private application code
+│   ├── config/             # Configuration management
+│   ├── domain/             # Business entities and interfaces
+│   ├── handler/            # HTTP request handlers
+│   ├── repository/         # Data access implementations
+│   ├── scheduler/          # Background processing
+│   └── service/            # Business logic services
+├── migrations/             # Database schema migrations
+├── docker-compose.yml      # Local development environment
+├── Dockerfile              # Production container build
+├── Makefile                # Development workflow commands
+└── README.md               # Project documentation
 ```
 
 ### System Architecture Diagram
@@ -71,32 +73,78 @@ go_message_dispatcher/
 └─────────────────────────────────────────────────────────────────────────────┘
 
 Data Flow:
-1. 📝 Messages inserted into PostgreSQL database
-2. 🔄 Background processor polls database every 2 minutes
-3. 📤 Sends 2 messages per batch to SMS API (FIFO order)
-4. ✅ Updates database with sent status
-5. 💾 Caches delivery metadata in Redis
-6. 🔍 API queries return enhanced data from cache + database
+1. Messages inserted into PostgreSQL database
+2. Background processor polls database every 2 minutes
+3. Sends 2 messages per batch to SMS API (FIFO order)
+4. Updates database with sent status
+5. Caches delivery metadata in Redis
+6. API queries return enhanced data from cache + database
 ```
 
-## ✨ Features
+## Features
 
-- **Automated Processing**: Background goroutine processes messages every 2 minutes
-- **FIFO Queue**: Messages processed in creation order
-- **Graceful Shutdown**: Proper cleanup of resources and in-flight operations
-- **REST API**: Start/stop controls and sent message listing
-- **Redis Integration**: Caches delivery metadata for enhanced responses
-- **Comprehensive Logging**: Structured logging with contextual information
-- **Error Resilience**: Robust error handling with exponential backoff
-- **Docker Support**: Complete containerization with docker-compose
+- **Automated Processing**: Background goroutine processes messages every 2 minutes.
+- **FIFO Queue**: Messages are processed in the order they are created.
+- **Graceful Shutdown**: Ensures proper cleanup of resources and in-flight operations.
+- **REST API**: Provides controls to start/stop processing and list sent messages.
+- **Redis Integration**: Caches delivery metadata for faster API responses.
+- **Comprehensive Logging**: Structured JSON logging for easier analysis.
+- **Error Resilience**: Handles connection errors and retries gracefully.
+- **Docker Support**: Fully containerized with a `docker-compose` file for local setup.
+- **Distributed Locking**: Supports running multiple instances for high availability.
+- **Container Resilience**: Includes health checks and connection retry logic.
+- **Reliability**: Designed to recover from temporary failures, with graceful shutdown and clear error handling.
 
-## 🚀 Deployment Options
+## Key Features for Reliability
+
+This system includes several features designed for reliable operation:
+
+### Tier 1: Resilience and Monitoring
+
+- **Detailed Health Checks**: The `/health` endpoint verifies connectivity to the database and Redis.
+- **Connection Retry Logic**: Uses exponential backoff when trying to connect to the database and Redis on startup.
+- **Docker Health Monitoring**: The `Dockerfile` includes a `HEALTHCHECK` instruction for container orchestrators.
+- **Handles Temporary Outages**: The service can recover from transient network issues and temporary service outages.
+
+### Tier 2: High Availability
+
+- **Distributed Locking**: Uses Redis to coordinate and ensure only one instance processes messages at a time.
+- **Automatic Failover**: If an active instance crashes, another instance can take over after the lock expires.
+- **Supports Rolling Updates**: You can perform rolling updates without interrupting message processing.
+- **Lock Auto-Extension**: The Redis lock is automatically extended during processing to prevent it from expiring prematurely.
+
+### Core Features
+
+- **Exactly 2 messages per batch**: Processes up to 2 messages every 2 minutes.
+- **Indefinite Retry**: If sending a batch of messages fails, it will be retried in the next cycle.
+- **SSL/TLS Support**: The HTTP client can connect to webhook URLs using `https` and accepts self-signed certificates.
+- **Data Validation**: Basic validation for phone numbers and content is handled at the database level.
+- **Race Condition Protection**: Uses `FOR UPDATE SKIP LOCKED` to prevent multiple instances from processing the same messages.
+- **Redis is Optional for Sending**: Message sending continues even if the Redis cache is temporarily unavailable.
+- **Graceful Shutdown**: Finishes processing the current batch of messages before shutting down.
+- **Individual Message Handling**: If one message in a batch succeeds and another fails, the successful one remains marked as sent.
+
+See [TIER2_IMPLEMENTATION.md](./TIER2_IMPLEMENTATION.md) for technical details.
+
+## Documentation
+
+### Getting Started
+
+- README.md - This file, overview and quick start
+- [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) - Common commands and workflows
+- [QUICK_START_MULTI_INSTANCE.md](./QUICK_START_MULTI_INSTANCE.md) - Multi-instance deployment guide
+
+### Implementation Details
+
+- [TIER2_IMPLEMENTATION.md](./TIER2_IMPLEMENTATION.md) - Multi-instance technical guide
+
+## Deployment Options
 
 Choose the deployment method that best fits your needs:
 
-### Option 1: 📦 Pre-built Binaries (Recommended)
+### Option 1: Pre-built Binaries (Recommended)
 
-**No setup required - just download and run!**
+No setup required - just download and run.
 
 #### Option 1.1: Standalone Binaries
 
@@ -109,31 +157,43 @@ Choose the deployment method that best fits your needs:
 
 2. **Set up your environment**:
 
-   ```bash
-   # Create .env file with your configuration
-   DB_HOST=your-postgres-host
-   DB_USER=your-db-user
-   DB_PASSWORD=your-db-password
-   REDIS_HOST=your-redis-host
-   ```
+  ```bash
+    # Create .env file with your configuration
+    DB_HOST=localhost
+    DB_PORT=5432 # NOT REQUIRED, has default value
+    DB_NAME=messages_db
+    DB_USER=postgres
+    DB_PASSWORD=your_password
+    DB_SSLMODE=disable # NOT REQUIRED, has default value
+
+    REDIS_HOST=localhost
+    REDIS_PORT=6379 # NOT REQUIRED, has default value
+
+    SMS_API_URL=http://localhost:3001/send # or https://...  default is the mock-api app in this repo  --- NOT REQUIRED, has default value, if you want to use https://webhook.site/ or any custom api endpoint change it
+    SMS_API_TOKEN=mock-token # NOT REQUIRED, has default value
+
+    PROCESSING_INTERVAL=2m # 2 minutes  NOT REQUIRED, has default value
+    LOG_LEVEL=info # or debug NOT REQUIRED, has default value
+
+  ```
 
 3. **Run database migrations**:
 
-   ```bash
-   # Download and run the migrate tool
-   ./message-dispatcher-migrate --version
-   ./message-dispatcher-migrate
-   ```
+  ```bash
+  # Download and run the migrate tool
+  ./message-dispatcher-migrate --version
+  ./message-dispatcher-migrate
+  ```
 
 4. **Start the service**:
 
-   ```bash
-   # Check version
-   ./message-dispatcher-server --version
+  ```bash
+  # Check version
+  ./message-dispatcher-server --version
 
-   # Start the service
-   ./message-dispatcher-server
-   ```
+  # Start the service
+  ./message-dispatcher-server
+  ```
 
 #### Option 1.2: Docker Images
 
@@ -160,9 +220,9 @@ docker logs message-dispatcher
 docker stop message-dispatcher
 ```
 
-**Available at:** [https://hub.docker.com/r/h4mid2019/message-dispatcher](https://hub.docker.com/r/h4mid2019/message-dispatcher)
+Available at: <https://hub.docker.com/r/h4mid2019/message-dispatcher>
 
-### Option 2: 🐳 Docker (Production Ready)
+### Option 2: Docker
 
 Complete containerized solution with all dependencies
 
@@ -181,7 +241,7 @@ docker-compose logs -f message-dispatcher
 docker-compose down
 ```
 
-**What's included:**
+What's included:
 
 - PostgreSQL database with automatic schema setup
 - Redis for caching
@@ -189,11 +249,11 @@ docker-compose down
 - Message dispatcher service
 - Automatic health checks and restarts
 
-### Option 3: 🔧 Build from Source
+### Option 3: Build from Source
 
 For development and customization
 
-**Prerequisites:**
+Prerequisites:
 
 - Go 1.25+
 - PostgreSQL 15+ (running)
@@ -219,7 +279,7 @@ make build
 ./bin/server
 ```
 
-## 🔧 Quick Start Guide
+## Quick Start Guide
 
 ### Automated Setup (Windows)
 
@@ -326,20 +386,79 @@ CREATE INDEX idx_messages_phone ON messages(phone_number);
 
 Set these environment variables:
 
-| Variable         | Description                       | Default                      |
-| ---------------- | --------------------------------- | ---------------------------- |
-| `DB_HOST`        | PostgreSQL host                   | localhost                    |
-| `DB_PORT`        | PostgreSQL port                   | 5432                         |
-| `DB_NAME`        | Database name                     | messages_db                  |
-| `DB_USER`        | Database user                     | postgres                     |
-| `DB_PASSWORD`    | Database password                 | password                     |
-| `REDIS_HOST`     | Redis host                        | localhost                    |
-| `REDIS_PORT`     | Redis port                        | 6379                         |
-| `REDIS_PASSWORD` | Redis password                    | ""                           |
-| `SERVER_PORT`    | HTTP server port                  | 8080                         |
-| `LOG_LEVEL`      | Log level (debug/info/warn/error) | info                         |
-| `SMS_API_URL`    | SMS provider API URL              | `http://localhost:3001/send` |
-| `SMS_API_TOKEN`  | SMS provider auth token           | mock-token                   |
+| Variable                   | Description                       | Default                      | Required |
+| -------------------------- | --------------------------------- | ---------------------------- | -------- |
+| `DB_HOST`                  | PostgreSQL host                   | localhost                    | YES      |
+| `DB_PORT`                  | PostgreSQL port                   | 5432                         | NO       |
+| `DB_NAME`                  | Database name                     | messages_db                  | YES      |
+| `DB_USER`                  | Database user                     | postgres                     | YES      |
+| `DB_PASSWORD`              | Database password                 | password                     | YES      |
+| `REDIS_HOST`               | Redis host                        | localhost                    | YES      |
+| `REDIS_PORT`               | Redis port                        | 6379                         | NO       |
+| `REDIS_PASSWORD`           | Redis password                    | ""                           | NO       |
+| `SERVER_PORT`              | HTTP server port                  | 8080                         | NO       |
+| `LOG_LEVEL`                | Log level (debug/info/warn/error) | info                         | NO       |
+| `SMS_API_URL`              | SMS provider API URL              | `http://localhost:3001/send` | NO       |
+| `SMS_API_TOKEN`            | SMS provider auth token           | mock-token                   | NO       |
+| `DISTRIBUTED_LOCK_ENABLED` | Enable distributed locking        | false                        | NO       |
+| `DISTRIBUTED_LOCK_TTL`     | Lock TTL for distributed mode     | 3m                           | NO       |
+| `DISTRIBUTED_LOCK_KEY`     | Redis key for distributed lock    | message-dispatcher:lock      | NO       |
+
+### Multi-Instance Deployment (Tier 2)
+
+To run multiple instances of the message dispatcher (for high availability and load distribution):
+
+1. **Enable distributed locking**:
+
+   ```bash
+   DISTRIBUTED_LOCK_ENABLED=true
+   ```
+
+2. **Configure lock TTL** (should be longer than processing interval):
+
+   ```bash
+   DISTRIBUTED_LOCK_TTL=3m  # Default is 3 minutes (processing interval is 2 minutes)
+   ```
+
+3. **Deploy multiple instances**:
+
+   ```bash
+   # Instance 1
+   docker run -d --name dispatcher-1 \
+     -e DISTRIBUTED_LOCK_ENABLED=true \
+     -e DB_HOST=postgres \
+     -e REDIS_HOST=redis \
+     h4mid2019/message-dispatcher
+
+   # Instance 2
+   docker run -d --name dispatcher-2 \
+     -e DISTRIBUTED_LOCK_ENABLED=true \
+     -e DB_HOST=postgres \
+     -e REDIS_HOST=redis \
+     h4mid2019/message-dispatcher
+
+   # Instance 3
+   docker run -d --name dispatcher-3 \
+     -e DISTRIBUTED_LOCK_ENABLED=true \
+     -e DB_HOST=postgres \
+     -e REDIS_HOST=redis \
+     h4mid2019/message-dispatcher
+   ```
+
+How it works:
+
+- Only one instance processes messages at a time
+- Lock is automatically acquired before processing
+- Lock extends during processing to prevent expiration
+- If an instance crashes, lock auto-expires and another takes over
+- Each instance logs whether it acquired the lock or skipped the cycle
+
+Benefits:
+
+- High Availability: If one instance fails, others continue
+- Zero Downtime Deployments: Rolling updates without message loss
+- Load Distribution: Instances share the processing workload
+- Fault Tolerance: Automatic failover between instances
 
 ## Testing
 
@@ -362,6 +481,27 @@ Run integration tests:
 go test -tags=integration ./...
 ```
 
+### Unit Tests current info
+
+1. **Domain** (100% coverage):
+   - `TestMessage_IsValid` - Validation logic
+   - `TestMessage_ValidatePhoneNumber` - Phone validation
+
+2. **Scheduler** (91.1% coverage):
+   - `TestMessageScheduler_StartAndStop` - Lifecycle
+   - `TestMessageScheduler_ProcessesImmediatelyOnStart` - Auto-start
+   - `TestMessageScheduler_GracefulShutdownWaitsForBatch` - Graceful shutdown
+   - `TestMessageScheduler_ProcessesAtInterval` - Interval processing
+
+3. **Service** (60% coverage):
+   - `TestMessageService_ProcessMessages_Success` - Normal flow
+   - `TestMessageService_ProcessMessages_NoMessages` - Empty queue
+   - `TestMessageService_ProcessMessages_FirstSucceedsSecondFails` - Partial failure
+   - `TestMessageService_ProcessMessages_SingleMessage` - Single message
+   - `TestMessageService_ProcessMessages_RedisFailureDoesNotBlockSending` - Redis tolerance
+   - `TestMessageService_GetSentMessagesWithCache_Success` - Cache integration
+   - `TestMessageService_GetSentMessagesWithCache_RedisFailureFallsBack` - Cache fallback
+  
 ## Monitoring & Health Checks
 
 - Health endpoint: `GET /health`
@@ -382,20 +522,20 @@ go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 The project includes VS Code settings that will:
 
-- ✅ **Format on save** with `goimports`
-- ✅ **Lint on save** with `golangci-lint`
-- ✅ **Organize imports** automatically
-- ✅ **Run vet checks** on save
-- ✅ **Build checks** on save
+- Format on save with goimports
+- Lint on save with golangci-lint
+- Organize imports automatically
+- Run vet checks on save
+- Build checks on save
 
 ### Pre-commit Hooks
 
 Git hooks automatically run before each commit:
 
-- 🔧 Code formatting
-- 🔍 Linting checks
-- 🧪 All tests
-- 🏗️ Build verification
+- Code formatting
+- Linting checks
+- All tests
+- Build verification
 
 ## Code Quality
 
@@ -421,7 +561,7 @@ golangci-lint run --fix
 
 ### Quick Quality Checks
 
-**Check everything at once:**
+Check everything at once:
 
 ```bash
 # Bash/Linux/macOS
@@ -433,7 +573,7 @@ gofmt -s -l . && goimports -l . && go vet ./... && golangci-lint run
 gofmt -s -l .; if ($LASTEXITCODE -eq 0) { goimports -l . }; if ($LASTEXITCODE -eq 0) { go vet ./... }; if ($LASTEXITCODE -eq 0) { golangci-lint run }
 ```
 
-**Fix formatting issues:**
+Fix formatting issues:
 
 ```bash
 # Bash/Linux/macOS
@@ -470,7 +610,7 @@ gofmt -s -w .; goimports -w .
 - Resource cleanup and connection management
 - Comprehensive error handling and logging
 
-## 🏗️ Building and Releases
+## Building and Releases
 
 ### Local Development Build
 
@@ -514,14 +654,14 @@ The project uses GitHub Actions for automated building and releasing:
    git push origin v1.0.0
    ```
 
-2. **GitHub Actions will automatically**:
+2. GitHub Actions will automatically:
 
    - Run all tests
    - Build binaries for Windows, Linux, and macOS (Intel + Apple Silicon)
    - Create a GitHub release with downloadable artifacts
    - Build and push Docker images
 
-3. **Download pre-built binaries** from the [Releases page](../../releases)
+3. Download pre-built binaries from the Releases page
 
 ### Version Information
 
@@ -530,6 +670,14 @@ All binaries include version information accessible via:
 - `--version` flag: `./message-dispatcher-server --version`
 - API endpoint: `GET /version`
 - Health endpoint: `GET /health` (includes version in response)
+  
+## What's Next (Optional Future Enhancements)
+
+**Not implemented but could be added:**
+
+1. Metrics endpoint (Prometheus)
+
+and possibly a lot more...
 
 ## License
 

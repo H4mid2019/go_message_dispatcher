@@ -47,7 +47,7 @@ services:
       - REDIS_PORT=6379
       - SERVER_PORT=8080
       - LOG_LEVEL=info
-      - SMS_API_URL=http://host.docker.internal:3001/send
+      - SMS_API_URL=http://mock-sms-api:3001/send
       - SMS_API_TOKEN=mock-token
     depends_on:
       postgres:
