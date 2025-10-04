@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/go-message-dispatcher/internal/domain"
 )
 
@@ -82,17 +84,20 @@ type MessageService struct {
 	messageRepo domain.MessageRepository
 	cacheRepo   domain.CacheRepository
 	smsProvider domain.SMSProvider
+	logger      *zap.Logger
 }
 
 func NewMessageService(
 	messageRepo domain.MessageRepository,
 	cacheRepo domain.CacheRepository,
 	smsProvider domain.SMSProvider,
+	logger *zap.Logger,
 ) *MessageService {
 	return &MessageService{
 		messageRepo: messageRepo,
 		cacheRepo:   cacheRepo,
 		smsProvider: smsProvider,
+		logger:      logger,
 	}
 }
 
@@ -107,16 +112,29 @@ func (s *MessageService) ProcessMessages(ctx context.Context) error {
 		return nil
 	}
 
-	anyFailure := false
+	failedCount := 0
+	successCount := 0
 	for _, message := range messages {
 		err := s.processSingleMessage(ctx, message)
 		if err != nil {
-			anyFailure = true
+			failedCount++
+			s.logger.Error("Message processing failed",
+				zap.Int("message_id", message.ID),
+				zap.String("phone", message.PhoneNumber),
+				zap.Error(err))
+		} else {
+			successCount++
+			s.logger.Debug("Message sent",
+				zap.Int("message_id", message.ID),
+				zap.String("phone", message.PhoneNumber))
 		}
 	}
 
-	if anyFailure {
-		return fmt.Errorf("one or more messages failed to process")
+	if failedCount > 0 {
+		s.logger.Warn("Batch completed with failures",
+			zap.Int("failed", failedCount),
+			zap.Int("succeeded", successCount))
+		return fmt.Errorf("%d message(s) failed, %d succeeded", failedCount, successCount)
 	}
 
 	return nil

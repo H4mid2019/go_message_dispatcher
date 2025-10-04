@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
 
 	"github.com/go-message-dispatcher/internal/domain"
 )
@@ -101,7 +102,7 @@ func TestMessageService_ProcessMessages_Success(t *testing.T) {
 	mockCacheRepo.On("SetDeliveryCache", mock.Anything, 1, mock.AnythingOfType("*domain.CachedDelivery")).Return(nil)
 	mockCacheRepo.On("SetDeliveryCache", mock.Anything, 2, mock.AnythingOfType("*domain.CachedDelivery")).Return(nil)
 
-	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider, zap.NewNop())
 	err := service.ProcessMessages(context.Background())
 	assert.NoError(t, err)
 	mockMessageRepo.AssertExpectations(t)
@@ -116,7 +117,7 @@ func TestMessageService_ProcessMessages_NoMessages(t *testing.T) {
 
 	mockMessageRepo.On("GetUnsentMessages", mock.Anything, 2).Return([]*domain.Message{}, nil)
 
-	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider, zap.NewNop())
 	err := service.ProcessMessages(context.Background())
 
 	assert.NoError(t, err)
@@ -150,7 +151,7 @@ func TestMessageService_GetSentMessagesWithCache_Success(t *testing.T) {
 	mockMessageRepo.On("GetSentMessages", mock.Anything).Return(sentMessages, nil)
 	mockCacheRepo.On("GetMultipleDeliveryCache", mock.Anything, []int{1}).Return(cachedData, nil)
 
-	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider, zap.NewNop())
 	result, err := service.GetSentMessagesWithCache(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
@@ -181,7 +182,7 @@ func TestMessageService_ProcessMessages_FirstSucceedsSecondFails(t *testing.T) {
 	mockMessageRepo.On("MarkAsSent", mock.Anything, 1).Return(nil)
 	mockCacheRepo.On("SetDeliveryCache", mock.Anything, 1, mock.AnythingOfType("*domain.CachedDelivery")).Return(nil)
 
-	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider, zap.NewNop())
 	err := service.ProcessMessages(context.Background())
 
 	assert.Error(t, err)
@@ -204,7 +205,7 @@ func TestMessageService_ProcessMessages_SingleMessage(t *testing.T) {
 	mockMessageRepo.On("MarkAsSent", mock.Anything, 1).Return(nil)
 	mockCacheRepo.On("SetDeliveryCache", mock.Anything, 1, mock.AnythingOfType("*domain.CachedDelivery")).Return(nil)
 
-	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider, zap.NewNop())
 	err := service.ProcessMessages(context.Background())
 
 	assert.NoError(t, err)
@@ -227,7 +228,7 @@ func TestMessageService_ProcessMessages_RedisFailureDoesNotBlockSending(t *testi
 	mockCacheRepo.On("SetDeliveryCache", mock.Anything, 1, mock.AnythingOfType("*domain.CachedDelivery")).
 		Return(assert.AnError)
 
-	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider, zap.NewNop())
 	err := service.ProcessMessages(context.Background())
 
 	assert.NoError(t, err)
@@ -247,7 +248,7 @@ func TestMessageService_GetSentMessagesWithCache_RedisFailureFallsBack(t *testin
 	mockCacheRepo.On("GetMultipleDeliveryCache", mock.Anything, []int{1}).
 		Return(map[int]*domain.CachedDelivery{}, assert.AnError)
 
-	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider)
+	service := NewMessageService(mockMessageRepo, mockCacheRepo, mockSMSProvider, zap.NewNop())
 	result, err := service.GetSentMessagesWithCache(context.Background())
 
 	assert.NoError(t, err)
