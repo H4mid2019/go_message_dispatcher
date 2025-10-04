@@ -57,7 +57,7 @@ func main() {
 		return
 	}
 
-	fmt.Println("Database migrations completed successfully")
+	fmt.Println("Migrations completed")
 }
 
 func runMigrations(db *sql.DB) error {

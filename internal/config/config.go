@@ -1,4 +1,3 @@
-// Package config provides centralized configuration management with environment variable support.
 package config
 
 import (
@@ -43,9 +42,12 @@ type SMSConfig struct {
 }
 
 type AppConfig struct {
-	BatchSize          int
-	ProcessingInterval time.Duration
-	ShutdownTimeout    time.Duration
+	BatchSize              int
+	ProcessingInterval     time.Duration
+	ShutdownTimeout        time.Duration
+	DistributedLockEnabled bool
+	DistributedLockTTL     time.Duration
+	DistributedLockKey     string
 }
 
 func Load() (*Config, error) {
@@ -80,9 +82,12 @@ func Load() (*Config, error) {
 			Token:  getEnv("SMS_API_TOKEN", "mock-token"),
 		},
 		App: AppConfig{
-			BatchSize:          getEnvInt("BATCH_SIZE", defaultBatchSize),
-			ProcessingInterval: getEnvDuration("PROCESSING_INTERVAL", 2*time.Minute), //nolint:mnd
-			ShutdownTimeout:    getEnvDuration("SHUTDOWN_TIMEOUT", 30*time.Second),   //nolint:mnd
+			BatchSize:              getEnvInt("BATCH_SIZE", defaultBatchSize),
+			ProcessingInterval:     getEnvDuration("PROCESSING_INTERVAL", 2*time.Minute), //nolint:mnd
+			ShutdownTimeout:        getEnvDuration("SHUTDOWN_TIMEOUT", 30*time.Second),   //nolint:mnd
+			DistributedLockEnabled: getEnvBool("DISTRIBUTED_LOCK_ENABLED", false),
+			DistributedLockTTL:     getEnvDuration("DISTRIBUTED_LOCK_TTL", 3*time.Minute),     //nolint:mnd
+			DistributedLockKey:     getEnv("DISTRIBUTED_LOCK_KEY", "message-dispatcher:lock"), //nolint:mnd
 		},
 	}
 
@@ -142,6 +147,15 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 	if value := os.Getenv(key); value != "" {
 		if duration, err := time.ParseDuration(value); err == nil {
 			return duration
+		}
+	}
+	return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolVal, err := strconv.ParseBool(value); err == nil {
+			return boolVal
 		}
 	}
 	return defaultValue

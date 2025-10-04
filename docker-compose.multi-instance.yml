@@ -1,0 +1,159 @@
+# Multi-Instance Deployment Example
+# This demonstrates Tier 2 distributed locking with 3 dispatcher instances
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: messages_postgres_ha
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: messages_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: messages_redis_ha
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Message Dispatcher Instance 1
+  dispatcher-1:
+    build: .
+    container_name: message_dispatcher_1
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=messages_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVER_PORT=8080
+      - LOG_LEVEL=info
+      - SMS_API_URL=http://host.docker.internal:3001/send
+      - SMS_API_TOKEN=mock-token
+      # Tier 2: Distributed Locking Configuration
+      - DISTRIBUTED_LOCK_ENABLED=true
+      - DISTRIBUTED_LOCK_TTL=3m
+      - DISTRIBUTED_LOCK_KEY=message-dispatcher:lock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Message Dispatcher Instance 2
+  dispatcher-2:
+    build: .
+    container_name: message_dispatcher_2
+    ports:
+      - "8081:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=messages_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVER_PORT=8080
+      - LOG_LEVEL=info
+      - SMS_API_URL=http://host.docker.internal:3001/send
+      - SMS_API_TOKEN=mock-token
+      # Tier 2: Distributed Locking Configuration
+      - DISTRIBUTED_LOCK_ENABLED=true
+      - DISTRIBUTED_LOCK_TTL=3m
+      - DISTRIBUTED_LOCK_KEY=message-dispatcher:lock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Message Dispatcher Instance 3
+  dispatcher-3:
+    build: .
+    container_name: message_dispatcher_3
+    ports:
+      - "8082:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=messages_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVER_PORT=8080
+      - LOG_LEVEL=info
+      - SMS_API_URL=http://host.docker.internal:3001/send
+      - SMS_API_TOKEN=mock-token
+      # Tier 2: Distributed Locking Configuration
+      - DISTRIBUTED_LOCK_ENABLED=true
+      - DISTRIBUTED_LOCK_TTL=3m
+      - DISTRIBUTED_LOCK_KEY=message-dispatcher:lock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Mock SMS API for testing (Go version)
+  mock-sms-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.mock-api
+    container_name: mock_sms_api_ha
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
