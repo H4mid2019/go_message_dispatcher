@@ -2,7 +2,45 @@
 
 A Golang service that automatically sends SMS messages from a PostgreSQL queue with Redis caching and REST API controls.
 
-_*Some of documentation has been written by LLM.*_
+_*Some of the documentations has been written by LLM.*_
+
+## Indexes
+
+- [Deployment Options](#deployment-options)
+  - [Option 1: Pre-built Binaries (Recommended)](#option-1-pre-built-binaries-recommended)
+    - [Option 1.1: Standalone Binaries](#option-11-standalone-binaries)
+    - [Option 1.2: Docker Images](#option-12-docker-images)
+  - [Option 2: Docker](#option-2-docker)
+  - [Option 3: Build from Source](#option-3-build-from-source)
+- [Quick Start Guide](#quick-start-guide)
+  - [Automated Setup (Windows)](#automated-setup-windows)
+  - [Testing Your Deployment](#testing-your-deployment)
+- [Key Features for Reliability](#key-features-for-reliability)
+  - [Tier 1: Resilience and Monitoring](#tier-1-resilience-and-monitoring)
+  - [Tier 2: High Availability](#tier-2-high-availability)
+  - [Core Features](#core-features)
+- [API Documentation](#api-documentation)
+  - [Control Endpoints](#control-endpoints)
+    - [Start Message Processing](#start-message-processing)
+    - [Stop Message Processing](#stop-message-processing)
+  - [Monitoring Endpoints](#monitoring-endpoints)
+    - [List Sent Messages](#list-sent-messages)
+- [Database Schema](#database-schema)
+- [Configuration](#configuration)
+  - [Multi-Instance Deployment (Tier 2)](#multi-instance-deployment-tier-2)
+- [Monitoring \& Health Checks](#monitoring--health-checks)
+- [Development Setup](#development-setup)
+  - [Required Tools](#required-tools)
+  - [VS Code Configuration](#vs-code-configuration)
+  - [Pre-commit Hooks](#pre-commit-hooks)
+- [Code Quality](#code-quality)
+  - [Manual Commands](#manual-commands)
+  - [Quick Quality Checks](#quick-quality-checks)
+- [Building and Releases](#building-and-releases)
+  - [Local Development Build](#local-development-build)
+  - [Cross-Platform Builds](#cross-platform-builds)
+  - [Creating Releases](#creating-releases)
+  - [Version Information](#version-information)
 
 ## Architecture Overview
 
@@ -157,43 +195,43 @@ No setup required - just download and run.
 
 2. **Set up your environment**:
 
-  ```bash
-    # Create .env file with your configuration
-    DB_HOST=localhost
-    DB_PORT=5432 # NOT REQUIRED, has default value
-    DB_NAME=messages_db
-    DB_USER=postgres
-    DB_PASSWORD=your_password
-    DB_SSLMODE=disable # NOT REQUIRED, has default value
+```bash
+  # Create .env file with your configuration
+  DB_HOST=localhost
+  DB_PORT=5432 # NOT REQUIRED, has default value
+  DB_NAME=messages_db
+  DB_USER=postgres
+  DB_PASSWORD=your_password
+  DB_SSLMODE=disable # NOT REQUIRED, has default value
 
-    REDIS_HOST=localhost
-    REDIS_PORT=6379 # NOT REQUIRED, has default value
+  REDIS_HOST=localhost
+  REDIS_PORT=6379 # NOT REQUIRED, has default value
 
-    SMS_API_URL=http://localhost:3001/send # or https://...  default is the mock-api app in this repo  --- NOT REQUIRED, has default value, if you want to use https://webhook.site/ or any custom api endpoint change it
-    SMS_API_TOKEN=mock-token # NOT REQUIRED, has default value
+  SMS_API_URL=http://localhost:3001/send # or https://...  default is the mock-api app in this repo  --- NOT REQUIRED, has default value, if you want to use https://webhook.site/ or any custom api endpoint change it
+  SMS_API_TOKEN=mock-token # NOT REQUIRED, has default value
 
-    PROCESSING_INTERVAL=2m # 2 minutes  NOT REQUIRED, has default value
-    LOG_LEVEL=info # or debug NOT REQUIRED, has default value
+  PROCESSING_INTERVAL=2m # 2 minutes  NOT REQUIRED, has default value
+  LOG_LEVEL=info # or debug NOT REQUIRED, has default value
 
-  ```
+```
 
 3. **Run database migrations**:
 
-  ```bash
-  # Download and run the migrate tool
-  ./message-dispatcher-migrate --version
-  ./message-dispatcher-migrate
-  ```
+```bash
+# Download and run the migrate tool
+./message-dispatcher-migrate --version
+./message-dispatcher-migrate
+```
 
 4. **Start the service**:
 
-  ```bash
-  # Check version
-  ./message-dispatcher-server --version
+```bash
+# Check version
+./message-dispatcher-server --version
 
-  # Start the service
-  ./message-dispatcher-server
-  ```
+# Start the service
+./message-dispatcher-server
+```
 
 #### Option 1.2: Docker Images
 
@@ -484,10 +522,12 @@ go test -tags=integration ./...
 ### Unit Tests current info
 
 1. **Domain** (100% coverage):
+
    - `TestMessage_IsValid` - Validation logic
    - `TestMessage_ValidatePhoneNumber` - Phone validation
 
 2. **Scheduler** (91.1% coverage):
+
    - `TestMessageScheduler_StartAndStop` - Lifecycle
    - `TestMessageScheduler_ProcessesImmediatelyOnStart` - Auto-start
    - `TestMessageScheduler_GracefulShutdownWaitsForBatch` - Graceful shutdown
@@ -501,7 +541,7 @@ go test -tags=integration ./...
    - `TestMessageService_ProcessMessages_RedisFailureDoesNotBlockSending` - Redis tolerance
    - `TestMessageService_GetSentMessagesWithCache_Success` - Cache integration
    - `TestMessageService_GetSentMessagesWithCache_RedisFailureFallsBack` - Cache fallback
-  
+
 ## Monitoring & Health Checks
 
 - Health endpoint: `GET /health`
@@ -670,7 +710,7 @@ All binaries include version information accessible via:
 - `--version` flag: `./message-dispatcher-server --version`
 - API endpoint: `GET /version`
 - Health endpoint: `GET /health` (includes version in response)
-  
+
 ## What's Next (Optional Future Enhancements)
 
 **Not implemented but could be added:**
