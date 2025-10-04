@@ -15,6 +15,8 @@ type MessageHandler struct {
 	processingController domain.ProcessingController
 	logger               *zap.Logger
 	version              VersionInfo
+	dbHealthChecker      domain.HealthChecker
+	redisHealthChecker   domain.HealthChecker
 }
 
 type VersionInfo struct {
@@ -28,12 +30,16 @@ func NewMessageHandler(
 	processingController domain.ProcessingController,
 	logger *zap.Logger,
 	versionInfo VersionInfo,
+	dbHealthChecker domain.HealthChecker,
+	redisHealthChecker domain.HealthChecker,
 ) *MessageHandler {
 	return &MessageHandler{
 		messageService:       messageService,
 		processingController: processingController,
 		logger:               logger,
 		version:              versionInfo,
+		dbHealthChecker:      dbHealthChecker,
+		redisHealthChecker:   redisHealthChecker,
 	}
 }
 
@@ -124,16 +130,45 @@ func (h *MessageHandler) GetSentMessages(c *gin.Context) {
 }
 
 func (h *MessageHandler) HealthCheck(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	status := "stopped"
 	if h.processingController.IsRunning() {
 		status = "running"
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	health := gin.H{
 		"status":            "healthy",
 		"processing_status": status,
 		"version":           h.version,
-	})
+		"dependencies":      gin.H{},
+	}
+
+	overallHealthy := true
+
+	if err := h.dbHealthChecker.CheckHealth(ctx); err != nil {
+		h.logger.Warn("Database health check failed", zap.Error(err))
+		health["dependencies"].(gin.H)["database"] = "unhealthy"
+		health["status"] = "degraded"
+		overallHealthy = false
+	} else {
+		health["dependencies"].(gin.H)["database"] = "healthy"
+	}
+
+	if err := h.redisHealthChecker.CheckHealth(ctx); err != nil {
+		h.logger.Warn("Redis health check failed", zap.Error(err))
+		health["dependencies"].(gin.H)["redis"] = "unhealthy"
+		health["status"] = "degraded"
+	} else {
+		health["dependencies"].(gin.H)["redis"] = "healthy"
+	}
+
+	if !overallHealthy {
+		c.JSON(http.StatusServiceUnavailable, health)
+		return
+	}
+
+	c.JSON(http.StatusOK, health)
 }
 
 func (h *MessageHandler) Version(c *gin.Context) {

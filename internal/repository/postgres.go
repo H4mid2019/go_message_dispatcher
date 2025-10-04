@@ -24,8 +24,14 @@ func (r *PostgreSQLMessageRepository) GetUnsentMessages(ctx context.Context, lim
 		SELECT id, phone_number, content, sent, created_at 
 		FROM messages 
 		WHERE sent = FALSE 
-		ORDER BY created_at ASC 
-		LIMIT $1`
+		AND phone_number IS NOT NULL 
+		AND phone_number != '' 
+		AND content IS NOT NULL 
+		AND content != '' 
+		AND LENGTH(phone_number) BETWEEN 10 AND 20
+		ORDER BY created_at ASC, id ASC 
+		LIMIT $1 
+		FOR UPDATE SKIP LOCKED`
 
 	rows, err := r.db.QueryContext(ctx, query, limit)
 	if err != nil {
@@ -134,5 +140,9 @@ func (r *PostgreSQLMessageRepository) CreateMessage(ctx context.Context, phoneNu
 }
 
 func (r *PostgreSQLMessageRepository) CheckConnection(ctx context.Context) error {
+	return r.db.PingContext(ctx)
+}
+
+func (r *PostgreSQLMessageRepository) CheckHealth(ctx context.Context) error {
 	return r.db.PingContext(ctx)
 }

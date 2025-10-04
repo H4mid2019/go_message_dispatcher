@@ -20,6 +20,7 @@ import (
 	"github.com/go-message-dispatcher/internal/config"
 	"github.com/go-message-dispatcher/internal/domain"
 	"github.com/go-message-dispatcher/internal/handler"
+	"github.com/go-message-dispatcher/internal/lock"
 	"github.com/go-message-dispatcher/internal/repository"
 	"github.com/go-message-dispatcher/internal/scheduler"
 	"github.com/go-message-dispatcher/internal/service"
@@ -64,6 +65,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	app.logger.Info("Starting HTTP server", zap.Int("port", app.config.Server.Port))
+
 	go func() {
 		if err := app.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			app.logger.Fatal("Failed to start HTTP server", zap.Error(err))
@@ -84,12 +87,14 @@ func NewApplication() (*Application, error) {
 		return nil, fmt.Errorf("failed to initialize logger: %w", err)
 	}
 
-	db, err := initDatabase(cfg)
+	logger.Info("Initializing application")
+
+	db, err := initDatabase(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
 
-	redisClient, err := initRedis(cfg)
+	redisClient, err := initRedis(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis: %w", err)
 	}
@@ -98,14 +103,26 @@ func NewApplication() (*Application, error) {
 	cacheRepo := repository.NewRedisCacheRepository(redisClient)
 	smsProvider := service.NewHTTPSMSProvider(cfg.SMS.APIURL, cfg.SMS.Token)
 	messageService := service.NewMessageService(messageRepo, cacheRepo, smsProvider)
-	messageScheduler := scheduler.NewMessageScheduler(messageService, logger, cfg.App.ProcessingInterval)
+
+	// Create scheduler with distributed locking if enabled
+	var messageScheduler domain.ProcessingController
+	if cfg.App.DistributedLockEnabled {
+		distributedLock := lock.NewRedisLock(redisClient, cfg.App.DistributedLockKey, cfg.App.DistributedLockTTL, logger)
+		messageScheduler = scheduler.NewMessageSchedulerWithLock(messageService, logger, cfg.App.ProcessingInterval, distributedLock)
+		logger.Info("Distributed locking enabled",
+			zap.String("lock_key", cfg.App.DistributedLockKey),
+			zap.Duration("lock_ttl", cfg.App.DistributedLockTTL))
+	} else {
+		messageScheduler = scheduler.NewMessageScheduler(messageService, logger, cfg.App.ProcessingInterval)
+		logger.Info("Distributed locking disabled - single instance mode")
+	}
 
 	versionInfo := handler.VersionInfo{
 		Version:   version,
 		BuildTime: buildTime,
 		GitCommit: gitCommit,
 	}
-	messageHandler := handler.NewMessageHandler(messageService, messageScheduler, logger, versionInfo)
+	messageHandler := handler.NewMessageHandler(messageService, messageScheduler, logger, versionInfo, messageRepo, cacheRepo)
 	httpServer := setupHTTPServer(cfg, messageHandler, logger)
 
 	app := &Application{
@@ -117,6 +134,14 @@ func NewApplication() (*Application, error) {
 		processingController: messageScheduler,
 		httpServer:           httpServer,
 	}
+
+	if err := messageScheduler.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start message scheduler: %w", err)
+	}
+
+	logger.Info("Application initialized successfully",
+		zap.String("version", version),
+		zap.Int("server_port", cfg.Server.Port))
 
 	return app, nil
 }
@@ -157,11 +182,12 @@ func initLogger(logLevel string) (*zap.Logger, error) {
 	return zapLogConfig.Build()
 }
 
-func initDatabase(cfg *config.Config) (*sql.DB, error) {
+func initDatabase(cfg *config.Config, logger *zap.Logger) (*sql.DB, error) {
 	const maxOpenConns = 25
 	const maxIdleConns = 25
 	const connMaxLifetime = 5 * time.Minute
 	const dbTimeout = 5 * time.Second
+	const maxRetries = 5
 
 	db, err := sql.Open("postgres", cfg.DatabaseDSN())
 	if err != nil {
@@ -172,20 +198,38 @@ func initDatabase(cfg *config.Config) (*sql.DB, error) {
 	db.SetMaxIdleConns(maxIdleConns)
 	db.SetConnMaxLifetime(connMaxLifetime)
 
-	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
-	defer cancel()
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+		err = db.PingContext(ctx)
+		cancel()
 
-	err = db.PingContext(ctx)
-	if err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+		if err == nil {
+			logger.Info("Database connection established",
+				zap.String("host", cfg.Database.Host),
+				zap.Int("port", cfg.Database.Port),
+				zap.Int("attempt", attempt))
+			return db, nil
+		}
+
+		lastErr = err
+		if attempt < maxRetries {
+			backoff := time.Duration(attempt*attempt) * time.Second
+			logger.Warn("Database connection failed, retrying",
+				zap.Error(err),
+				zap.Int("attempt", attempt),
+				zap.Duration("backoff", backoff))
+			time.Sleep(backoff)
+		}
 	}
 
-	return db, nil
+	_ = db.Close()
+	return nil, fmt.Errorf("failed to connect to database after %d attempts: %w", maxRetries, lastErr)
 }
 
-func initRedis(cfg *config.Config) (*redis.Client, error) {
+func initRedis(cfg *config.Config, logger *zap.Logger) (*redis.Client, error) {
 	const redisTimeout = 5 * time.Second
+	const maxRetries = 5
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.RedisAddr(),
@@ -193,15 +237,32 @@ func initRedis(cfg *config.Config) (*redis.Client, error) {
 		DB:       cfg.Redis.DB,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
-	defer cancel()
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
+		_, err := client.Ping(ctx).Result()
+		cancel()
 
-	_, err := client.Ping(ctx).Result()
-	if err != nil {
-		return nil, fmt.Errorf("failed to ping Redis: %w", err)
+		if err == nil {
+			logger.Info("Redis connection established",
+				zap.String("host", cfg.Redis.Host),
+				zap.Int("port", cfg.Redis.Port),
+				zap.Int("attempt", attempt))
+			return client, nil
+		}
+
+		lastErr = err
+		if attempt < maxRetries {
+			backoff := time.Duration(attempt*attempt) * time.Second
+			logger.Warn("Redis connection failed, retrying",
+				zap.Error(err),
+				zap.Int("attempt", attempt),
+				zap.Duration("backoff", backoff))
+			time.Sleep(backoff)
+		}
 	}
 
-	return client, nil
+	return nil, fmt.Errorf("failed to connect to Redis after %d attempts: %w", maxRetries, lastErr)
 }
 
 func setupHTTPServer(cfg *config.Config, messageHandler *handler.MessageHandler, logger *zap.Logger) *http.Server {
@@ -267,16 +328,19 @@ func (app *Application) waitForShutdown(_ context.Context) {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	<-quit
+	app.logger.Info("Shutdown signal received, initiating graceful shutdown")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), app.config.App.ShutdownTimeout)
 	defer cancel()
 
 	if app.processingController.IsRunning() {
+		app.logger.Info("Stopping message processing")
 		if err := app.processingController.Stop(); err != nil {
 			app.logger.Error("Failed to stop message processing", zap.Error(err))
 		}
 	}
 
+	app.logger.Info("Shutting down HTTP server")
 	if err := app.httpServer.Shutdown(shutdownCtx); err != nil {
 		app.logger.Error("Failed to shutdown HTTP server gracefully", zap.Error(err))
 	}
@@ -288,4 +352,6 @@ func (app *Application) waitForShutdown(_ context.Context) {
 	if err := app.redisClient.Close(); err != nil {
 		app.logger.Error("Failed to close Redis connection", zap.Error(err))
 	}
+
+	app.logger.Info("Application shutdown complete")
 }

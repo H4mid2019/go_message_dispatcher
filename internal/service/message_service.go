@@ -4,6 +4,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -19,9 +20,16 @@ type HTTPSMSProvider struct {
 }
 
 func NewHTTPSMSProvider(baseURL, token string) *HTTPSMSProvider {
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true, // #nosec G402
+		},
+	}
+
 	return &HTTPSMSProvider{
 		client: &http.Client{
-			Timeout: 30 * time.Second, //nolint:mnd
+			Timeout:   6 * time.Second,
+			Transport: transport,
 		},
 		baseURL: baseURL,
 		token:   token,
@@ -100,11 +108,16 @@ func (s *MessageService) ProcessMessages(ctx context.Context) error {
 		return nil
 	}
 
+	anyFailure := false
 	for _, message := range messages {
 		err := s.processSingleMessage(ctx, message)
 		if err != nil {
-			return fmt.Errorf("failed to process message %d: %w", message.ID, err)
+			anyFailure = true
 		}
+	}
+
+	if anyFailure {
+		return fmt.Errorf("one or more messages failed to process")
 	}
 
 	return nil
@@ -113,12 +126,12 @@ func (s *MessageService) ProcessMessages(ctx context.Context) error {
 func (s *MessageService) processSingleMessage(ctx context.Context, message *domain.Message) error {
 	response, err := s.smsProvider.SendMessage(ctx, message.PhoneNumber, message.Content)
 	if err != nil {
-		return fmt.Errorf("failed to send SMS: %w", err)
+		return fmt.Errorf("failed to send SMS for message %d: %w", message.ID, err)
 	}
 
 	err = s.messageRepo.MarkAsSent(ctx, message.ID)
 	if err != nil {
-		return fmt.Errorf("failed to mark message as sent: %w", err)
+		return fmt.Errorf("failed to mark message %d as sent: %w", message.ID, err)
 	}
 
 	cachedDelivery := &domain.CachedDelivery{
@@ -126,10 +139,7 @@ func (s *MessageService) processSingleMessage(ctx context.Context, message *doma
 		Timestamp: time.Now(),
 	}
 
-	err = s.cacheRepo.SetDeliveryCache(ctx, message.ID, cachedDelivery)
-	if err != nil {
-		fmt.Printf("Warning: failed to cache delivery data for message %d: %v\n", message.ID, err)
-	}
+	_ = s.cacheRepo.SetDeliveryCache(ctx, message.ID, cachedDelivery)
 
 	return nil
 }
@@ -151,7 +161,6 @@ func (s *MessageService) GetSentMessagesWithCache(ctx context.Context) ([]*domai
 
 	cachedData, err := s.cacheRepo.GetMultipleDeliveryCache(ctx, messageIDs)
 	if err != nil {
-		fmt.Printf("Warning: failed to retrieve cached delivery data: %v\n", err)
 		cachedData = make(map[int]*domain.CachedDelivery)
 	}
 

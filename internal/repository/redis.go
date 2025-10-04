@@ -114,3 +114,7 @@ func (r *RedisCacheRepository) buildCacheKey(messageID int) string {
 func (r *RedisCacheRepository) CheckConnection(ctx context.Context) error {
 	return r.client.Ping(ctx).Err()
 }
+
+func (r *RedisCacheRepository) CheckHealth(ctx context.Context) error {
+	return r.client.Ping(ctx).Err()
+}
