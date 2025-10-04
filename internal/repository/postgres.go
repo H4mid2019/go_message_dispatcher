@@ -36,7 +36,7 @@ func (r *PostgreSQLMessageRepository) GetUnsentMessages(ctx context.Context, lim
 	if err != nil {
 		return nil, fmt.Errorf("failed to query unsent messages: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var messages []*domain.Message
 	for rows.Next() {
@@ -92,7 +92,7 @@ func (r *PostgreSQLMessageRepository) GetSentMessages(ctx context.Context) ([]*d
 	if err != nil {
 		return nil, fmt.Errorf("failed to query sent messages: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var messages []*domain.Message
 	for rows.Next() {

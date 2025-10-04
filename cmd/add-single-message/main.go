@@ -21,7 +21,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err = db.ExecContext(context.Background(),
 		"INSERT INTO messages (phone_number, content) VALUES ($1, $2)",

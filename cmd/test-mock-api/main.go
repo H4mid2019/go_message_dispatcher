@@ -44,7 +44,7 @@ func main() {
 		fmt.Printf("Error making request: %v\n", err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -66,7 +66,7 @@ func main() {
 		fmt.Printf("Error getting health: %v\n", err)
 		return
 	}
-	defer healthResp.Body.Close()
+	defer func() { _ = healthResp.Body.Close() }()
 
 	healthBody, err := io.ReadAll(healthResp.Body)
 	if err != nil {

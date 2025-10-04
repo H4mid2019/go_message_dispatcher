@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -150,7 +151,7 @@ func (s *MessageScheduler) processBatch() {
 		defer lockCancel()
 
 		if err := s.distributedLock.Acquire(lockCtx); err != nil {
-			if err == lock.ErrLockNotAcquired {
+			if errors.Is(err, lock.ErrLockNotAcquired) {
 				s.logger.Debug("Another instance processing, skipping")
 			} else {
 				s.logger.Warn("Failed to acquire lock", zap.Error(err))
