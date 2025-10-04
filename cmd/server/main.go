@@ -102,7 +102,7 @@ func NewApplication() (*Application, error) {
 	messageRepo := repository.NewPostgreSQLMessageRepository(db)
 	cacheRepo := repository.NewRedisCacheRepository(redisClient)
 	smsProvider := service.NewHTTPSMSProvider(cfg.SMS.APIURL, cfg.SMS.Token)
-	messageService := service.NewMessageService(messageRepo, cacheRepo, smsProvider)
+	messageService := service.NewMessageService(messageRepo, cacheRepo, smsProvider, logger)
 
 	// Create scheduler with distributed locking if enabled
 	var messageScheduler domain.ProcessingController
