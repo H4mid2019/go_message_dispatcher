@@ -57,6 +57,15 @@ type ErrorResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
+// StartProcessing godoc
+// @Summary Start message processing
+// @Description Start the background message processing scheduler
+// @Tags messaging
+// @Accept json
+// @Produce json
+// @Success 200 {object} ControlResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /messaging/start [post]
 func (h *MessageHandler) StartProcessing(c *gin.Context) {
 	isRunning := h.processingController.IsRunning()
 	if isRunning {
@@ -83,6 +92,15 @@ func (h *MessageHandler) StartProcessing(c *gin.Context) {
 	})
 }
 
+// StopProcessing godoc
+// @Summary Stop message processing
+// @Description Stop the background message processing scheduler
+// @Tags messaging
+// @Accept json
+// @Produce json
+// @Success 200 {object} ControlResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /messaging/stop [post]
 func (h *MessageHandler) StopProcessing(c *gin.Context) {
 	isRunning := h.processingController.IsRunning()
 	if !isRunning {
@@ -109,6 +127,15 @@ func (h *MessageHandler) StopProcessing(c *gin.Context) {
 	})
 }
 
+// GetSentMessages godoc
+// @Summary Get sent messages
+// @Description Retrieve all successfully sent messages from cache or database
+// @Tags messages
+// @Accept json
+// @Produce json
+// @Success 200 {object} SentMessagesResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /messages/sent [get]
 func (h *MessageHandler) GetSentMessages(c *gin.Context) {
 	messages, err := h.messageService.GetSentMessagesWithCache(c.Request.Context())
 	if err != nil {
@@ -128,6 +155,14 @@ func (h *MessageHandler) GetSentMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// HealthCheck godoc
+// @Summary Health check endpoint
+// @Description Check the health status of the API and its dependencies (database, redis)
+// @Tags health
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 503 {object} map[string]interface{}
+// @Router /health [get]
 func (h *MessageHandler) HealthCheck(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -170,6 +205,13 @@ func (h *MessageHandler) HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, health)
 }
 
+// Version godoc
+// @Summary Get version information
+// @Description Get the current version, build time, and git commit information
+// @Tags health
+// @Produce json
+// @Success 200 {object} VersionInfo
+// @Router /version [get]
 func (h *MessageHandler) Version(c *gin.Context) {
 	c.JSON(http.StatusOK, h.version)
 }

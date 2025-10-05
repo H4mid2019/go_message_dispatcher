@@ -13,10 +13,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	_ "github.com/go-message-dispatcher/cmd/server/docs"
 	"github.com/go-message-dispatcher/internal/config"
 	"github.com/go-message-dispatcher/internal/domain"
 	"github.com/go-message-dispatcher/internal/handler"
@@ -24,8 +28,6 @@ import (
 	"github.com/go-message-dispatcher/internal/repository"
 	"github.com/go-message-dispatcher/internal/scheduler"
 	"github.com/go-message-dispatcher/internal/service"
-
-	_ "github.com/lib/pq"
 )
 
 var (
@@ -33,6 +35,21 @@ var (
 	buildTime = "unknown"
 	gitCommit = "unknown"
 )
+
+// @title Message Dispatcher API
+// @version 1.0
+// @description API for managing and dispatching SMS messages
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@example.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api
+// @schemes http https
 
 type Application struct {
 	config               *config.Config
@@ -287,6 +304,7 @@ func setupHTTPServer(cfg *config.Config, messageHandler *handler.MessageHandler,
 	messages := api.Group("/messages")
 	messages.GET("/sent", messageHandler.GetSentMessages)
 
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	const readHeaderTimeout = 10 * time.Second
 
 	return &http.Server{

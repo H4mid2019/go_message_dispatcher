@@ -1,0 +1,158 @@
+basePath: /api
+definitions:
+  domain.SentMessageResponse:
+    properties:
+      cached_at:
+        type: string
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      message_id:
+        type: string
+      phone_number:
+        type: string
+      sent:
+        type: boolean
+    type: object
+  handler.ControlResponse:
+    properties:
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+  handler.ErrorResponse:
+    properties:
+      error:
+        type: string
+      message:
+        type: string
+    type: object
+  handler.SentMessagesResponse:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/domain.SentMessageResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  handler.VersionInfo:
+    properties:
+      build_time:
+        type: string
+      git_commit:
+        type: string
+      version:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: API for managing and dispatching SMS messages
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Message Dispatcher API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Check the health status of the API and its dependencies (database,
+        redis)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Health check endpoint
+      tags:
+      - health
+  /messages/sent:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all successfully sent messages from cache or database
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SentMessagesResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get sent messages
+      tags:
+      - messages
+  /messaging/start:
+    post:
+      consumes:
+      - application/json
+      description: Start the background message processing scheduler
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ControlResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Start message processing
+      tags:
+      - messaging
+  /messaging/stop:
+    post:
+      consumes:
+      - application/json
+      description: Stop the background message processing scheduler
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ControlResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Stop message processing
+      tags:
+      - messaging
+  /version:
+    get:
+      description: Get the current version, build time, and git commit information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.VersionInfo'
+      summary: Get version information
+      tags:
+      - health
+schemes:
+- http
+- https
+swagger: "2.0"
