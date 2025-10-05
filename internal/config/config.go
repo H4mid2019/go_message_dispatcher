@@ -48,6 +48,7 @@ type AppConfig struct {
 	DistributedLockEnabled bool
 	DistributedLockTTL     time.Duration
 	DistributedLockKey     string
+	MaxContentLength       int
 }
 
 func Load() (*Config, error) {
@@ -88,6 +89,7 @@ func Load() (*Config, error) {
 			DistributedLockEnabled: getEnvBool("DISTRIBUTED_LOCK_ENABLED", false),
 			DistributedLockTTL:     getEnvDuration("DISTRIBUTED_LOCK_TTL", 3*time.Minute),     //nolint:mnd
 			DistributedLockKey:     getEnv("DISTRIBUTED_LOCK_KEY", "message-dispatcher:lock"), //nolint:mnd
+			MaxContentLength:       getEnvInt("MAX_CONTENT_LENGTH", 160),                      //nolint:mnd
 		},
 	}
 
@@ -113,6 +115,9 @@ func (c *Config) validate() error {
 	}
 	if c.App.ProcessingInterval <= 0 {
 		return fmt.Errorf("processing interval must be positive")
+	}
+	if c.App.MaxContentLength <= 0 {
+		return fmt.Errorf("max content length must be positive")
 	}
 	return nil
 }

@@ -1,6 +1,6 @@
 # Automated Message Sending System
 
-A Golang service that automatically sends SMS messages from a PostgreSQL queue with Redis caching and REST API controls.
+A Golang service that automatically sends SMS messages (max 160 characters) from a PostgreSQL queue with Redis caching and REST API controls.
 
 _*Some of the documentations has been written by LLM.*_
 
@@ -51,6 +51,7 @@ This system implements a background message processor that:
 - Tracks delivery status to prevent duplicates
 - Provides REST API for control and monitoring
 - Caches successful deliveries in Redis for performance
+- Also, supports swagger endpoint documentations
 
 ## Project Structure
 
@@ -117,12 +118,20 @@ Data Flow:
 4. Updates database with sent status
 5. Caches delivery metadata in Redis
 6. API queries return enhanced data from cache + database
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Swagger Endpoints                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ GET  /swagger/index.html        │ Swagger Docs for API Endpoints            │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Features
 
 - **Automated Processing**: Background goroutine processes messages every 2 minutes.
 - **FIFO Queue**: Messages are processed in the order they are created.
+- **Content Limit**: Enforces 160 character limit for SMS messages.
 - **Graceful Shutdown**: Ensures proper cleanup of resources and in-flight operations.
 - **REST API**: Provides controls to start/stop processing and list sent messages.
 - **Redis Integration**: Caches delivery metadata for faster API responses.
@@ -156,7 +165,7 @@ This system includes several features designed for reliable operation:
 - **Exactly 2 messages per batch**: Processes up to 2 messages every 2 minutes.
 - **Indefinite Retry**: If sending a batch of messages fails, it will be retried in the next cycle.
 - **SSL/TLS Support**: The HTTP client can connect to webhook URLs using `https` and accepts self-signed certificates.
-- **Data Validation**: Basic validation for phone numbers and content is handled at the database level.
+- **Data Validation**: validation for phone numbers (10-20 chars) and content (max 160 chars).
 - **Race Condition Protection**: Uses `FOR UPDATE SKIP LOCKED` to prevent multiple instances from processing the same messages.
 - **Redis is Optional for Sending**: Message sending continues even if the Redis cache is temporarily unavailable.
 - **Graceful Shutdown**: Finishes processing the current batch of messages before shutting down.
@@ -190,6 +199,7 @@ No setup required - just download and run.
 
    - `message-dispatcher-server-windows-amd64.exe` (Windows)
    - `message-dispatcher-server-linux-amd64` (Linux)
+   - `message-dispatcher-server-linux-arm64` (Linux Arm)
    - `message-dispatcher-server-darwin-amd64` (macOS Intel)
    - `message-dispatcher-server-darwin-arm64` (macOS Apple Silicon)
 
@@ -206,6 +216,8 @@ No setup required - just download and run.
 
   REDIS_HOST=localhost
   REDIS_PORT=6379 # NOT REQUIRED, has default value
+
+  MAX_CONTENT_LENGTH=160 # NOT REQUIRED, has default value
 
   SMS_API_URL=http://localhost:3001/send # or https://...  default is the mock-api app in this repo  --- NOT REQUIRED, has default value, if you want to use https://webhook.site/ or any custom api endpoint change it
   SMS_API_TOKEN=mock-token # NOT REQUIRED, has default value
@@ -352,6 +364,14 @@ curl -X POST http://localhost:8080/api/messaging/stop
 
 ## API Documentation
 
+### Swagger url
+
+using a browser view the following url:
+
+```text
+/swagger/index.html
+```
+
 ### Control Endpoints
 
 #### Start Message Processing
@@ -410,7 +430,7 @@ Response: 200 OK
 CREATE TABLE messages (
     id SERIAL PRIMARY KEY,
     phone_number VARCHAR(20) NOT NULL,
-    content TEXT NOT NULL,
+    content TEXT NOT NULL CHECK (LENGTH(content) <= 160 AND LENGTH(content) > 0),
     sent BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -418,7 +438,12 @@ CREATE TABLE messages (
 -- Performance indexes
 CREATE INDEX idx_messages_sent_created ON messages(sent, created_at);
 CREATE INDEX idx_messages_phone ON messages(phone_number);
+CREATE INDEX idx_messages_content_length ON messages (LENGTH(content)) WHERE sent = FALSE;
 ```
+
+**Content Length Validation:**
+
+- Maximum content length: **160 characters** (configurable via `MAX_CONTENT_LENGTH`)
 
 ## Configuration
 
@@ -438,6 +463,7 @@ Set these environment variables:
 | `LOG_LEVEL`                | Log level (debug/info/warn/error) | info                         | NO       |
 | `SMS_API_URL`              | SMS provider API URL              | `http://localhost:3001/send` | NO       |
 | `SMS_API_TOKEN`            | SMS provider auth token           | mock-token                   | NO       |
+| `MAX_CONTENT_LENGTH`       | Maximum possible content length   | 160                          | NO       |
 | `DISTRIBUTED_LOCK_ENABLED` | Enable distributed locking        | false                        | NO       |
 | `DISTRIBUTED_LOCK_TTL`     | Lock TTL for distributed mode     | 3m                           | NO       |
 | `DISTRIBUTED_LOCK_KEY`     | Redis key for distributed lock    | message-dispatcher:lock      | NO       |

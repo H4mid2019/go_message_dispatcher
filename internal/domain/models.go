@@ -24,6 +24,9 @@ func (m *Message) IsValid() error {
 	if m.Content == "" {
 		return fmt.Errorf("message content is required")
 	}
+	if len(m.Content) > 160 {
+		return fmt.Errorf("message content exceeds maximum length of 160 characters")
+	}
 	return nil
 }
 
@@ -35,6 +38,16 @@ func (m *Message) ValidatePhoneNumber() bool {
 		return false
 	}
 	return true
+}
+
+func (m *Message) ValidateContent(maxLength int) error {
+	if m.Content == "" {
+		return fmt.Errorf("message content is required")
+	}
+	if len(m.Content) > maxLength {
+		return fmt.Errorf("message content exceeds maximum length of %d characters (got %d)", maxLength, len(m.Content))
+	}
+	return nil
 }
 
 type SentMessageResponse struct {

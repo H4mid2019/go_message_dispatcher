@@ -28,6 +28,7 @@ func (r *PostgreSQLMessageRepository) GetUnsentMessages(ctx context.Context, lim
 		AND content IS NOT NULL 
 		AND content != '' 
 		AND LENGTH(phone_number) BETWEEN 10 AND 20
+		AND LENGTH(content) <= 160
 		ORDER BY created_at ASC, id ASC 
 		LIMIT $1 
 		FOR UPDATE SKIP LOCKED`
@@ -118,6 +119,14 @@ func (r *PostgreSQLMessageRepository) GetSentMessages(ctx context.Context) ([]*d
 }
 
 func (r *PostgreSQLMessageRepository) CreateMessage(ctx context.Context, phoneNumber, content string) (*domain.Message, error) {
+	// Validate content length before insertion
+	if len(content) > 160 {
+		return nil, fmt.Errorf("content exceeds maximum length of 160 characters (got %d)", len(content))
+	}
+	if content == "" {
+		return nil, fmt.Errorf("content cannot be empty")
+	}
+
 	query := `
 		INSERT INTO messages (phone_number, content) 
 		VALUES ($1, $2) 
