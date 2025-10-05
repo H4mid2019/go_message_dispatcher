@@ -123,6 +123,10 @@ jobs:
             goarch: amd64
             binary_suffix: ''
             asset_name_suffix: 'linux-amd64'
+          - goos: linux
+            goarch: arm64
+            binary_suffix: ''
+            asset_name_suffix: 'linux-arm64'
           - goos: darwin
             goarch: arm64
             binary_suffix: ''
@@ -274,7 +278,8 @@ jobs:
         echo "" >> release_notes.md
         echo "Choose the appropriate binary for your platform:" >> release_notes.md
         echo "* **Windows (64-bit)**: \`message-dispatcher-${{ steps.get_version.outputs.VERSION }}-windows-amd64.zip\`" >> release_notes.md
-        echo "* **Linux (64-bit)**: \`message-dispatcher-${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz\`" >> release_notes.md
+        echo "* **Linux (64-bit x86)**: \`message-dispatcher-${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz\`" >> release_notes.md
+        echo "* **Linux (64-bit ARM)**: \`message-dispatcher-${{ steps.get_version.outputs.VERSION }}-linux-arm64.tar.gz\`" >> release_notes.md
         echo "* **macOS (Intel)**: \`message-dispatcher-${{ steps.get_version.outputs.VERSION }}-darwin-amd64.tar.gz\`" >> release_notes.md
         echo "* **macOS (Apple Silicon)**: \`message-dispatcher-${{ steps.get_version.outputs.VERSION }}-darwin-arm64.tar.gz\`" >> release_notes.md
         echo "" >> release_notes.md
